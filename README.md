@@ -140,9 +140,9 @@ Repository checks:
 python3 -m unittest discover -s test -p 'test_*.py'
 bash test/test_formula.sh
 bash test/test_migration.sh
-ruby -c Formula/antigravity.rb
+brew ruby -- -c Formula/antigravity.rb
 bash -n scripts/bootstrap-desktop scripts/migrate-antigravity-v1-fedora
-brew audit --strict --formula Formula/antigravity.rb
+brew audit --strict Brandon-Gottshall/fedora-brew/antigravity
 ```
 
 Lifecycle validation additionally checks install, `brew test`, command resolution, desktop-file validity, stable `Exec=`, uninstall, reinstall, and legacy DNF absence.

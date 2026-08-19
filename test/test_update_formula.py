@@ -46,7 +46,6 @@ class ReleaseDiscoveryTest(unittest.TestCase):
     def test_updates_formula_atomically_by_shape(self):
         formula = """class Antigravity < Formula
   url "https://storage.googleapis.com/antigravity-public/antigravity-hub/2.8.0-1/linux-x64/Antigravity.tar.gz"
-  version "2.8.0"
   sha256 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 end
 """
@@ -60,7 +59,7 @@ end
             path.write_text(formula)
             self.assertTrue(MODULE.update_formula(path, release, "b" * 64))
             updated = path.read_text()
-            self.assertIn('version "2.8.1"', updated)
+            self.assertIn("/2.8.1-2/linux-x64/", updated)
             self.assertIn('sha256 "' + "b" * 64 + '"', updated)
 
 

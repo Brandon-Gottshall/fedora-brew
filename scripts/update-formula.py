@@ -68,18 +68,13 @@ def update_formula(path: Path, release: Release, digest: str) -> bool:
         f'  url "{release.url}"',
         original,
     )
-    updated, version_count = re.subn(
-        r'  version "2\.\d+\.\d+"',
-        f'  version "{release.version}"',
-        updated,
-    )
     updated, hash_count = re.subn(
         r'  sha256 "[0-9a-f]{64}"',
         f'  sha256 "{digest}"',
         updated,
         count=1,
     )
-    if (url_count, version_count, hash_count) != (1, 1, 1):
+    if (url_count, hash_count) != (1, 1):
         raise ValueError("formula shape changed; refusing partial update")
     if updated == original:
         return False
@@ -101,9 +96,9 @@ def main() -> int:
     page = args.html_file.read_text() if args.html_file else fetch(DOWNLOAD_PAGE).decode()
     release = discover(page)
     formula = args.formula.read_text()
-    current = re.search(r'  version "([^"]+)"', formula)
+    current = re.search(r"/antigravity-hub/(2\.\d+\.\d+)-\d+/linux-x64/", formula)
     if current is None:
-        raise ValueError("formula version is missing")
+        raise ValueError("formula artifact version is missing")
     print(f"official={release.version} build={release.build} current={current.group(1)}")
     if args.check or current.group(1) == release.version:
         return 0

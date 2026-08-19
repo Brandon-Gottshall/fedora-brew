@@ -22,8 +22,9 @@ jobs:
           python3 -m unittest discover -s test -p 'test_*.py'
           bash test/test_formula.sh
           bash test/test_migration.sh
-          ruby -c Formula/antigravity.rb
-          brew audit --strict --formula Formula/antigravity.rb
+          brew ruby -- -c Formula/antigravity.rb
+          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
+          brew audit --strict Brandon-Gottshall/fedora-brew/antigravity
       - name: Open update pull request
         uses: peter-evans/create-pull-request@v7
         with:

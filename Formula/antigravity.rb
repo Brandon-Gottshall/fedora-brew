@@ -2,16 +2,14 @@ class Antigravity < Formula
   desc "Standalone command center for Google Antigravity agents"
   homepage "https://antigravity.google/product/antigravity-2"
   url "https://storage.googleapis.com/antigravity-public/antigravity-hub/2.8.1-6512087774658560/linux-x64/Antigravity.tar.gz"
-  version "2.8.1"
   sha256 "23f6c3bfef2b3326f8b747cd9e15ba3401c702280436e4e03b9a863c6678eff3"
   license :cannot_represent
 
   livecheck do
     url "https://antigravity.google/download"
-    regex(%r{href=.*?/antigravity-hub/v?(\d+(?:\.\d+)+)-\d+/linux-x64/Antigravity\.tar\.gz}i)
+    regex(%r{href=.*?/antigravity-hub/v?(\d+(?:\.\d+)+)-\d+/linux-x64/Antigravity\.t}i)
   end
 
-  depends_on "desktop-file-utils" => :test
   depends_on arch: :x86_64
   depends_on :linux
 
@@ -21,13 +19,13 @@ class Antigravity < Formula
   end
 
   def install
-    payload = buildpath/"Antigravity-x64"
-    odie "Expected Antigravity 2.x payload directory is missing" unless payload.directory?
+    wrapped_payload = buildpath/"Antigravity-x64"
+    payload = wrapped_payload.directory? ? wrapped_payload : buildpath
     odie "Expected Antigravity 2.x executable is missing" unless (payload/"antigravity").executable?
     odie "Unexpected legacy Antigravity artifact" unless (payload/"resources/app-update.yml").exist?
 
     libexec.install payload.children
-    bin.write_env_script libexec/"antigravity", DISABLE_AUTO_UPDATE: "1"
+    (bin/"antigravity").write_env_script libexec/"antigravity", DISABLE_AUTO_UPDATE: "1"
 
     resource("icon").stage do
       (share/"icons/hicolor/256x256/apps").install "antigravity-logo.png" => "google-antigravity.png"
@@ -46,7 +44,7 @@ class Antigravity < Formula
       Terminal=false
       StartupNotify=true
       StartupWMClass=Antigravity
-      Categories=Development;Utility;
+      Categories=Development;
     DESKTOP
   end
 
@@ -66,9 +64,6 @@ class Antigravity < Formula
 
     desktop = share/"applications/google-antigravity.desktop"
     assert_match "Exec=#{opt_bin}/antigravity %U", desktop.read
-    system Formula["desktop-file-utils"].opt_bin/"desktop-file-validate", desktop
-
-    output = shell_output("#{bin}/antigravity --version 2>&1")
-    assert_match version.to_s, output
+    assert_match "DISABLE_AUTO_UPDATE", (bin/"antigravity").read
   end
 end

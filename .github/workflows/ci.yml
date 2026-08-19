@@ -19,7 +19,9 @@ jobs:
           python3 -m unittest discover -s test -p 'test_*.py'
           bash test/test_formula.sh
           bash test/test_migration.sh
-          ruby -c Formula/antigravity.rb
+          brew ruby -- -c Formula/antigravity.rb
           bash -n scripts/bootstrap-desktop scripts/migrate-antigravity-v1-fedora
       - name: Audit formula
-        run: brew audit --strict --formula Formula/antigravity.rb
+        run: |
+          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
+          brew audit --strict Brandon-Gottshall/fedora-brew/antigravity
