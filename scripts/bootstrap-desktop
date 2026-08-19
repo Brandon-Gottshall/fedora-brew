@@ -80,7 +80,13 @@ if command -v kbuildsycoca6 >/dev/null 2>&1; then
 elif command -v kbuildsycoca5 >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
 fi
+if [[ "${KDE_FULL_SESSION:-}" == true ]] &&
+   command -v systemctl >/dev/null 2>&1 &&
+   systemctl --user is-active --quiet plasma-plasmashell.service; then
+  systemctl --user restart plasma-plasmashell.service
+  printf 'Restarted Plasma Shell with the updated desktop search path.\n'
+fi
 
 if [[ "$action" == install ]]; then
-  printf 'Homebrew applications are now indexed. A new login makes the environment persistent everywhere.\n'
+  printf 'Homebrew applications are indexed and the environment is persistent for future logins.\n'
 fi

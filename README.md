@@ -33,7 +33,7 @@ scripts/bootstrap-desktop
 brew tap Brandon-Gottshall/fedora-brew https://github.com/Brandon-Gottshall/fedora-brew
 ```
 
-The bootstrap adds Homebrew's `share` directory to `XDG_DATA_DIRS`, refreshes desktop caches when available, and writes no application-specific files. A new login makes the environment persistent for every process. It can be reversed with `scripts/bootstrap-desktop --remove`.
+The bootstrap adds Homebrew's `share` directory to `XDG_DATA_DIRS`, refreshes desktop caches, and restarts an active Plasma Shell so launchers are available immediately. It writes no application-specific files, and the environment persists for future logins. It can be reversed with `scripts/bootstrap-desktop --remove`.
 
 ## Antigravity 2.x
 
