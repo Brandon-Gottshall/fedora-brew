@@ -33,7 +33,9 @@ scripts/bootstrap-desktop
 brew tap Brandon-Gottshall/fedora-brew https://github.com/Brandon-Gottshall/fedora-brew
 ```
 
-The bootstrap adds Homebrew's `share` directory to `XDG_DATA_DIRS`, refreshes desktop caches, and restarts an active Plasma Shell so launchers are available immediately. It writes no application-specific files, and the environment persists for future logins. It can be reversed with `scripts/bootstrap-desktop --remove`.
+The bootstrap adds Homebrew's `share` directory to `XDG_DATA_DIRS`, refreshes desktop caches, and installs a Plasma pre-startup hook in `~/.config/plasma-workspace/env/`. Plasma sources that documented hook before autostart applications such as Vicinae, so every current and future formula is discoverable without application-specific links. The generic `environment.d` configuration remains as a fallback for other Linux desktops.
+
+The bootstrap never restarts Plasma or launcher services. Already-running launchers must be fully quit and reopened once after the first bootstrap; future logins inherit the configuration automatically. The integration can be reversed with `scripts/bootstrap-desktop --remove`.
 
 ## Antigravity 2.x
 
@@ -138,6 +140,7 @@ Repository checks:
 
 ```bash
 python3 -m unittest discover -s test -p 'test_*.py'
+bash test/test_desktop_bootstrap.sh
 bash test/test_formula.sh
 bash test/test_migration.sh
 brew ruby -- -c Formula/antigravity.rb

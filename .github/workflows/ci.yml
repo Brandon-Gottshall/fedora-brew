@@ -17,6 +17,7 @@ jobs:
       - name: Test tooling
         run: |
           python3 -m unittest discover -s test -p 'test_*.py'
+          bash test/test_desktop_bootstrap.sh
           bash test/test_formula.sh
           bash test/test_migration.sh
           brew ruby -- -c Formula/antigravity.rb

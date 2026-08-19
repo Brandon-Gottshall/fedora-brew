@@ -6,8 +6,10 @@ usage() {
   cat <<'EOF'
 Usage: scripts/bootstrap-desktop [--remove]
 
-Adds Homebrew's share directory to XDG_DATA_DIRS for Linux desktop discovery.
-The default action is idempotent. --remove reverses only this bootstrap.
+Adds Homebrew's share directory to XDG_DATA_DIRS before desktop launchers start.
+On Plasma, a documented pre-startup hook is installed in addition to the
+generic environment.d fallback. The default action is idempotent.
+--remove reverses only files managed by this bootstrap.
 EOF
 }
 
@@ -31,10 +33,14 @@ if ! command -v brew >/dev/null 2>&1; then
 fi
 
 brew_share="$(brew --prefix)/share"
-config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d"
-config_file="$config_dir/60-fedora-brew-xdg-data.conf"
+xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+environment_dir="$xdg_config_home/environment.d"
+environment_file="$environment_dir/60-fedora-brew-xdg-data.conf"
+plasma_dir="$xdg_config_home/plasma-workspace/env"
+plasma_file="$plasma_dir/60-fedora-brew-xdg-data.sh"
 default_dirs="/usr/local/share:/usr/share"
 current_dirs="${XDG_DATA_DIRS:-$default_dirs}"
+managed_marker="# Managed by fedora-brew bootstrap."
 
 remove_path() {
   local input="$1" output="" item
@@ -49,44 +55,61 @@ remove_path() {
 base_dirs="$(remove_path "$current_dirs")"
 
 if [[ "$action" == remove ]]; then
-  if [[ -f "$config_file" ]] && grep -Fqx "XDG_DATA_DIRS=$brew_share:$base_dirs" "$config_file"; then
-    rm -f "$config_file"
-  fi
+  for managed_file in "$environment_file" "$plasma_file"; do
+    if [[ -f "$managed_file" ]] && grep -Fqx "$managed_marker" "$managed_file"; then
+      rm -f "$managed_file"
+    fi
+  done
   new_dirs="$base_dirs"
-  printf 'Removed Fedora Brew desktop bootstrap: %s\n' "$config_file"
+  printf 'Removed Fedora Brew desktop session integration.\n'
 else
-  mkdir -p "$config_dir"
+  mkdir -p "$environment_dir" "$plasma_dir"
   new_dirs="$brew_share:$base_dirs"
-  tmp_file="$(mktemp "$config_file.XXXXXX")"
-  trap 'rm -f "$tmp_file"' EXIT
-  printf 'XDG_DATA_DIRS=%s\n' "$new_dirs" > "$tmp_file"
-  chmod 0644 "$tmp_file"
-  mv -f "$tmp_file" "$config_file"
+  environment_tmp="$(mktemp "$environment_file.XXXXXX")"
+  plasma_tmp="$(mktemp "$plasma_file.XXXXXX")"
+  trap 'rm -f "$environment_tmp" "$plasma_tmp"' EXIT
+  {
+    printf '%s\n' "$managed_marker"
+    printf 'XDG_DATA_DIRS=%s\n' "$new_dirs"
+  } > "$environment_tmp"
+  {
+    printf '%s\n' "$managed_marker"
+    printf "_fedora_brew_share='%s'\n" "$brew_share"
+    cat <<'EOF'
+case ":${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:" in
+  *":${_fedora_brew_share}:"*) ;;
+  *) export XDG_DATA_DIRS="${_fedora_brew_share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
+esac
+unset _fedora_brew_share
+EOF
+  } > "$plasma_tmp"
+  chmod 0644 "$environment_tmp" "$plasma_tmp"
+  mv -f "$environment_tmp" "$environment_file"
+  mv -f "$plasma_tmp" "$plasma_file"
   trap - EXIT
-  printf 'Configured Fedora Brew desktop discovery: %s\n' "$config_file"
+  printf 'Configured generic environment fallback: %s\n' "$environment_file"
+  printf 'Configured Plasma pre-startup environment: %s\n' "$plasma_file"
 fi
 
-if command -v systemctl >/dev/null 2>&1; then
+if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v systemctl >/dev/null 2>&1; then
   systemctl --user set-environment "XDG_DATA_DIRS=$new_dirs" 2>/dev/null || true
 fi
-if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] &&
+   command -v dbus-update-activation-environment >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" dbus-update-activation-environment --systemd XDG_DATA_DIRS 2>/dev/null || true
 fi
-if command -v update-desktop-database >/dev/null 2>&1 && [[ -d "$brew_share/applications" ]]; then
+if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] &&
+   command -v update-desktop-database >/dev/null 2>&1 &&
+   [[ -d "$brew_share/applications" ]]; then
   XDG_DATA_DIRS="$new_dirs" update-desktop-database "$brew_share/applications" 2>/dev/null || true
 fi
-if command -v kbuildsycoca6 >/dev/null 2>&1; then
+if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v kbuildsycoca6 >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
-elif command -v kbuildsycoca5 >/dev/null 2>&1; then
+elif [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v kbuildsycoca5 >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
-fi
-if [[ "${KDE_FULL_SESSION:-}" == true ]] &&
-   command -v systemctl >/dev/null 2>&1 &&
-   systemctl --user is-active --quiet plasma-plasmashell.service; then
-  systemctl --user restart plasma-plasmashell.service
-  printf 'Restarted Plasma Shell with the updated desktop search path.\n'
 fi
 
 if [[ "$action" == install ]]; then
-  printf 'Homebrew applications are indexed and the environment is persistent for future logins.\n'
+  printf 'Homebrew applications are indexed for this shell and configured before future desktop logins.\n'
+  printf 'Already-running launchers must be fully quit and reopened once; no service restart is performed.\n'
 fi
