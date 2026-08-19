@@ -5,6 +5,16 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/bin"
+cat > "$fixture/bin/rpm" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+cat > "$fixture/bin/dnf" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "$fixture/bin/rpm" "$fixture/bin/dnf"
 
 cat > "$fixture/antigravity.repo" <<'EOF'
 [antigravity-rpm]
@@ -22,7 +32,7 @@ enabled=1
 gpgcheck=1
 EOF
 
-output="$(ANTIGRAVITY_REPO_DIR="$fixture" "$repo_root/scripts/migrate-antigravity-v1-fedora")"
+output="$(PATH="$fixture/bin:$PATH" ANTIGRAVITY_REPO_DIR="$fixture" "$repo_root/scripts/migrate-antigravity-v1-fedora")"
 grep -Fq "Dedicated legacy repository files: 1" <<< "$output"
 grep -Fq "$fixture/antigravity.repo" <<< "$output"
 grep -Fq "Unrelated Google repository files preserved: 1" <<< "$output"
