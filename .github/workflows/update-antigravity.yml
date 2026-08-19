@@ -1,0 +1,40 @@
+name: Update Antigravity
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@main
+      - name: Discover and pin release
+        run: python3 scripts/update-formula.py
+      - name: Validate
+        run: |
+          python3 -m unittest discover -s test -p 'test_*.py'
+          bash test/test_formula.sh
+          bash test/test_migration.sh
+          ruby -c Formula/antigravity.rb
+          brew audit --strict --formula Formula/antigravity.rb
+      - name: Open update pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/update-antigravity
+          delete-branch: true
+          commit-message: "antigravity: update release"
+          title: "antigravity: update release"
+          body: |
+            Automated update from Google Antigravity's official 2.x download page.
+
+            The workflow pins the immutable Linux x64 artifact and calculated SHA-256,
+            then runs parser tests and Homebrew audit before opening this pull request.
+
+            Co-Authored-By: Warp <agent@warp.dev>

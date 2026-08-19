@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/migrate-antigravity-v1-fedora [--apply]
+
+Dry-run is the default. --apply removes only:
+  * the exact RPM package named "antigravity"
+  * dedicated .repo files containing the exact legacy Antigravity repository
+
+Unrelated Google packages and repositories are never removed.
+EOF
+}
+
+apply=false
+case "${1:-}" in
+  "") ;;
+  --apply) apply=true ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+for command in rpm dnf grep; do
+  if ! command -v "$command" >/dev/null 2>&1; then
+    printf 'error: required command not found: %s\n' "$command" >&2
+    exit 1
+  fi
+done
+
+package_installed=false
+if rpm -q antigravity >/dev/null 2>&1; then
+  package_installed=true
+  printf 'Legacy RPM package:\n'
+  rpm -q --qf '  name=%{NAME}\n  epoch=%{EPOCHNUM}\n  version=%{VERSION}\n  release=%{RELEASE}\n  arch=%{ARCH}\n  vendor=%{VENDOR}\n  packager=%{PACKAGER}\n' antigravity
+fi
+
+if command -v antigravity >/dev/null 2>&1; then
+  command_path="$(readlink -f "$(command -v antigravity)")"
+  if owner="$(rpm -qf "$command_path" 2>/dev/null)"; then
+    printf 'RPM owning current command: %s (%s)\n' "$owner" "$command_path"
+    if [[ "${owner%%-*}" != antigravity && "$owner" != antigravity-* ]]; then
+      printf 'error: command ownership is ambiguous; refusing migration\n' >&2
+      exit 1
+    fi
+  fi
+fi
+
+repo_dir="${ANTIGRAVITY_REPO_DIR:-/etc/yum.repos.d}"
+declare -a legacy_repos=()
+declare -a unrelated_google_repos=()
+shopt -s nullglob
+for repo_file in "$repo_dir"/*.repo; do
+  if grep -Eq '^\[antigravity-rpm\][[:space:]]*$|^baseurl=https://us-central1-yum\.pkg\.dev/projects/antigravity-auto-updater-dev/antigravity-rpm/?[[:space:]]*$' "$repo_file"; then
+    legacy_repos+=("$repo_file")
+  elif grep -Eqi 'google|pkg\.dev' "$repo_file"; then
+    unrelated_google_repos+=("$repo_file")
+  fi
+done
+
+printf 'Dedicated legacy repository files: %d\n' "${#legacy_repos[@]}"
+printf '  %s\n' "${legacy_repos[@]:-none}"
+printf 'Unrelated Google repository files preserved: %d\n' "${#unrelated_google_repos[@]}"
+printf '  %s\n' "${unrelated_google_repos[@]:-none}"
+
+if ! $apply; then
+  printf 'Dry run complete; no changes made. Re-run with --apply to migrate.\n'
+  exit 0
+fi
+
+if $package_installed; then
+  sudo dnf remove -y antigravity
+fi
+if ((${#legacy_repos[@]})); then
+  sudo rm -f -- "${legacy_repos[@]}"
+fi
+if $package_installed || ((${#legacy_repos[@]})); then
+  sudo dnf makecache --refresh
+fi
+
+failed=false
+if rpm -q antigravity >/dev/null 2>&1; then
+  printf 'error: legacy antigravity RPM is still installed\n' >&2
+  failed=true
+fi
+for repo_file in "$repo_dir"/*.repo; do
+  if grep -Eq '^\[antigravity-rpm\][[:space:]]*$|^baseurl=https://us-central1-yum\.pkg\.dev/projects/antigravity-auto-updater-dev/antigravity-rpm/?[[:space:]]*$' "$repo_file"; then
+    printf 'error: legacy repository relationship remains: %s\n' "$repo_file" >&2
+    failed=true
+  fi
+done
+if dnf repoquery --installed antigravity 2>/dev/null | grep -q .; then
+  printf 'error: DNF still considers antigravity installed\n' >&2
+  failed=true
+fi
+
+$failed && exit 1
+printf 'Verified: the legacy Antigravity RPM and dedicated DNF repository are absent.\n'
