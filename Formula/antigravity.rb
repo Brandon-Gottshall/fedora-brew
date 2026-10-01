@@ -1,8 +1,8 @@
 class Antigravity < Formula
   desc "Standalone command center for Google Antigravity agents"
   homepage "https://antigravity.google/product/antigravity-2"
-  url "https://storage.googleapis.com/antigravity-public/antigravity-hub/2.8.1-6512087774658560/linux-x64/Antigravity.tar.gz"
-  sha256 "23f6c3bfef2b3326f8b747cd9e15ba3401c702280436e4e03b9a863c6678eff3"
+  url "https://storage.googleapis.com/antigravity-public/antigravity-hub/2.19.1-6046815158665216/linux-x64/Antigravity.tar.gz"
+  sha256 "7068fa471c3e5a1225e24e4f683497748b849d08ec702313d49c518cd45fa4af"
   license :cannot_represent
 
   livecheck do
