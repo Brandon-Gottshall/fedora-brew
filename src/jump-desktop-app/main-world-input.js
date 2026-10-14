@@ -4,6 +4,26 @@
   console.info('[Jump Desktop Guard] installed');
 
   let redispatchingMeta = false;
+  function scaleRemoteScroll(event) {
+    if (event.ctrlKey || event.shiftKey || document.documentElement?.dataset.jdInputMode === 'host') return;
+    if (event.target?.closest?.('#jd-toolbar-container, .MuiDrawer-root')) return;
+    if (!event.composedPath().some((node) => node.tagName === 'CANVAS')) return;
+
+    let sensitivity = 1;
+    try {
+      const value = Number(localStorage.getItem('__jumpDesktopScrollSensitivity'));
+      if (Number.isFinite(value) && value >= 0.25 && value <= 4) sensitivity = value;
+    } catch (error) {}
+    if (sensitivity === 1) return;
+
+    // Adjust the native event in Jump's world before its canvas listener reads
+    // the deltas. Keep its target, position, deltaMode, modifiers and trusted
+    // status intact; no synthetic redispatch or duplicate remote input.
+    Object.defineProperties(event, {
+      deltaX: { value: event.deltaX * sensitivity, configurable: true },
+      deltaY: { value: event.deltaY * sensitivity, configurable: true },
+    });
+  }
 
   function isMetaModifier(event) {
     const key = String(event.key || '');
@@ -186,4 +206,5 @@
   window.addEventListener('keyup', normalizeMeta, true);
   window.addEventListener('beforeinput', blockLiteralMetaText, true);
   window.addEventListener('input', blockLiteralMetaText, true);
+  window.addEventListener('wheel', scaleRemoteScroll, { capture: true, passive: true });
 })();

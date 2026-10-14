@@ -142,6 +142,16 @@ The formula extracts Anthropic's checksummed Debian payload without running its
 APT maintainer scripts, leaving Homebrew as the sole update owner. Fedora is not
 currently an upstream-supported distribution.
 
+## Jump Desktop
+
+The Linux Electron wrapper includes a saved **Scroll sensitivity** slider in
+the connected session's **Settings → Mouse scrolling** section. It ranges from
+0.25× to 4×, defaults to 1×, and includes a reset button.
+
+Ordinary scrolling controls the remote computer. Shift+scroll pans the canvas,
+pinch zooms, and Ctrl+0 resets the viewport. Run `bash test/test_jump_desktop.sh`
+to validate the wrapper and its scroll settings.
+
 ## Shadow PC and Toshy
 
 Install Shadow PC directly or through the catalog:

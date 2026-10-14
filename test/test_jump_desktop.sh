@@ -31,6 +31,7 @@ printf "==> Verifying Jump Desktop Electron wrapper source files...\n"
 
 node "$repo_root/test/test_jump_desktop_auth.js"
 node "$repo_root/test/test_jump_desktop_main_world_input.js"
+node "$repo_root/test/test_jump_desktop_scroll.js"
 node "$repo_root/test/test_jump_desktop_top_row.js"
 node "$repo_root/test/test_jump_desktop_escape_routing.js"
 node "$repo_root/test/test_jump_desktop_permissions.js"

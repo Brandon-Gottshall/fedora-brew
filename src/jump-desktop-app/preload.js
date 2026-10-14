@@ -28,9 +28,75 @@ try {
 }
 
 let currentMode = 'remote'; // 'remote' | 'host'
+// Keep this key/range in sync with main-world-input.js. Sandboxed preloads
+// cannot import a shared local module.
+const SCROLL_SENSITIVITY_KEY = '__jumpDesktopScrollSensitivity';
+
+function loadScrollSensitivity() {
+  try {
+    const value = Number(localStorage.getItem(SCROLL_SENSITIVITY_KEY));
+    if (Number.isFinite(value) && value >= 0.25 && value <= 4) return value;
+  } catch (error) {}
+  return 1;
+}
+
+function injectScrollSettings() {
+  // Scope to the session drawer (not other MUI drawers on the dashboard).
+  const drawer = [...document.querySelectorAll('.MuiDrawer-paper')]
+    .find((element) => element.querySelector('#displayOptions'));
+  if (!drawer || drawer.querySelector('#jd-scroll-settings')) return;
+  const content = drawer.querySelector('[role="presentation"]');
+  if (!content) return;
+
+  const section = document.createElement('section');
+  section.id = 'jd-scroll-settings';
+  section.style.cssText = 'padding: 20px 0; border-top: 1px solid rgba(128,128,128,0.3); color: inherit;';
+  section.innerHTML = `
+    <h3 style="font: inherit; font-size: 20px; margin: 0 0 16px;">Mouse scrolling</h3>
+    <div style="display: flex; justify-content: space-between; gap: 12px;">
+      <label for="jd-scroll-sensitivity">Scroll sensitivity</label>
+      <output id="jd-scroll-value" for="jd-scroll-sensitivity" aria-live="polite"></output>
+    </div>
+    <input id="jd-scroll-sensitivity" type="range" min="0.25" max="4" step="0.05"
+      style="width: 100%; margin: 14px 0; accent-color: #1976d2;"
+      aria-describedby="jd-scroll-description">
+    <div style="display: flex; justify-content: space-between; font-size: 12px;">
+      <span>Slower</span><span>Faster</span>
+    </div>
+    <p id="jd-scroll-description" style="font-size: 12px; line-height: 1.5;">
+      Adjusts horizontal and vertical scrolling on the remote computer.
+      Saved automatically on this device. Shift+scroll pans the canvas; pinch zooms.
+    </p>
+    <button id="jd-scroll-reset" type="button"
+      style="padding: 6px 12px; border: 1px solid #1976d2; border-radius: 4px; background: transparent; color: #1976d2; cursor: pointer;">
+      Reset to 1×
+    </button>
+    <div id="jd-scroll-save-error" role="status" style="font-size: 12px;"></div>
+  `;
+  const slider = section.querySelector('#jd-scroll-sensitivity');
+  const output = section.querySelector('#jd-scroll-value');
+  const updateValue = (value) => {
+    slider.value = String(value);
+    output.textContent = `${Number(value).toFixed(2)}×`;
+    slider.setAttribute('aria-valuetext', output.textContent);
+  };
+  const save = (value) => {
+    updateValue(value);
+    try {
+      localStorage.setItem(SCROLL_SENSITIVITY_KEY, String(value));
+      section.querySelector('#jd-scroll-save-error').textContent = '';
+    } catch (error) {
+      section.querySelector('#jd-scroll-save-error').textContent = 'Unable to save scroll sensitivity.';
+    }
+  };
+  updateValue(loadScrollSensitivity());
+  slider.addEventListener('input', () => save(Number(slider.value)));
+  section.querySelector('#jd-scroll-reset').addEventListener('click', () => save(1));
+  content.appendChild(section);
+}
 
 // Wrapper-owned camera for Jump's multi-monitor canvas. Two-finger scrolling
-// pans, pinch (reported by Chromium as ctrl+wheel) zooms around the pointer,
+// with Shift pans, pinch (reported by Chromium as ctrl+wheel) zooms around the pointer,
 // and Ctrl+0 resets to fit. This also prevents Chromium page zoom from making
 // remote monitors unreachable.
 const canvasViewport = {
@@ -98,6 +164,9 @@ function resetCanvasViewport() {
 function setupCanvasViewportControls() {
   document.addEventListener('wheel', (event) => {
     if (currentMode !== 'remote') return;
+    // Ordinary wheel events belong to Jump's remote scrolling encoder.
+    if (!event.ctrlKey && !event.shiftKey) return;
+    if (event.target.closest?.('#jd-toolbar-container, .MuiDrawer-root')) return;
     const target = getRemoteCanvasTarget();
     if (!target) return;
 
@@ -467,6 +536,7 @@ function injectToolbar() {
 
   function updateModeUI(mode, showHUD = true) {
     currentMode = mode;
+    document.documentElement.dataset.jdInputMode = mode;
     modeBtn.className = 'jd-btn';
     if (mode === 'host') {
       modeIcon.textContent = '🖥️';
@@ -498,6 +568,12 @@ function injectToolbar() {
 if (IS_JUMP_PAGE) {
   window.addEventListener('DOMContentLoaded', () => {
     injectToolbar();
+    injectScrollSettings();
+    // Jump mounts/unmounts its React drawer as sessions/settings are opened.
+    new MutationObserver(injectScrollSettings).observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
   });
 
   if (document.readyState === 'interactive' || document.readyState === 'complete') {
