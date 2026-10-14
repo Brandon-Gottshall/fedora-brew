@@ -1,0 +1,17 @@
+name: toshy
+display_name: Toshy
+description: macOS-style keyboard remapping for Linux
+homepage: https://github.com/RedBearAK/toshy
+
+default: brew
+
+backends:
+  brew:
+    summary: Homebrew runtime with noninteractive user-level integration
+    pros:
+      - Reproducible externally managed Python runtime
+      - Preserves user configuration and supports automatic rollback
+      - Updates through ordinary Homebrew commands
+    cons:
+      - Requires existing Fedora input and uinput prerequisites
+    cask: Brandon-Gottshall/fedora-brew/toshy

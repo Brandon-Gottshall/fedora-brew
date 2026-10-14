@@ -1,0 +1,40 @@
+name: Update Shadow PC
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "31 9 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@main
+      - name: Discover and pin release
+        run: python3 scripts/update-shadow-pc.py
+      - name: Validate
+        run: |
+          python3 -m unittest discover -s test -p 'test_*.py'
+          bash test/test_shadow_pc.sh
+          brew ruby -- -c Formula/shadow-pc.rb
+          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
+          brew audit --strict Brandon-Gottshall/fedora-brew/shadow-pc
+          brew install --build-from-source Brandon-Gottshall/fedora-brew/shadow-pc
+          brew test Brandon-Gottshall/fedora-brew/shadow-pc
+      - name: Open update pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/update-shadow-pc
+          delete-branch: true
+          commit-message: "shadow-pc: update release"
+          title: "shadow-pc: update release"
+          body: |
+            Automated update from Shadow's official Linux AppImage endpoint.
+
+            The workflow extracts the embedded application version, pins the
+            calculated SHA-256, and validates the formula before opening this PR.
