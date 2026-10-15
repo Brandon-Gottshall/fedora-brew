@@ -54,6 +54,15 @@ remove_path() {
 
 base_dirs="$(remove_path "$current_dirs")"
 
+# Retire only hooks written by the previous tap identity. Unmarked/user-edited
+# files at these paths are not ours to delete.
+for legacy_file in "$environment_dir/60-fedora-brew-xdg-data.conf" "$plasma_dir/60-fedora-brew-xdg-data.sh"; do
+  if [[ -f "$legacy_file" ]] && grep -Fqx '# Managed by fedora-brew bootstrap.' "$legacy_file"; then
+    rm -f "$legacy_file"
+  fi
+done
+
+
 if [[ "$action" == remove ]]; then
   for managed_file in "$environment_file" "$plasma_file"; do
     if [[ -f "$managed_file" ]] && grep -Fqx "$managed_marker" "$managed_file"; then

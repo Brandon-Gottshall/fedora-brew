@@ -129,6 +129,38 @@ class ToshyIntegrationTests(unittest.TestCase):
         self.assertIn("no files or services were changed", result.stdout)
         self.assertFalse((self.home / ".local/state/linux-formulas").exists())
 
+    def test_legacy_receipt_migrates_once_and_uninstall_still_works(self):
+        self.seed_user_config()
+        self.assertEqual(self.command("install").returncode, 0)
+        receipt = self.home / ".local/state/linux-formulas/integrations/toshy.json"
+        legacy = self.home / ".local/state/fedora-brew/integrations/toshy.json"
+        legacy.parent.mkdir(parents=True)
+        receipt.rename(legacy)
+        result = self.command("migrate")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(receipt.exists(), "preview must not copy receipts")
+        result = self.command("uninstall")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((self.home / ".local/bin/toshy-status").exists())
+        self.assertTrue(legacy.is_file(), "retain original receipt for rollback")
+        self.assertFalse(receipt.exists())
+        result = self.command("uninstall")
+        self.assertIn("No Homebrew Toshy integration receipt found", result.stdout)
+        self.assertFalse(receipt.exists(), "do not resurrect an uninstalled receipt")
+
+    def test_existing_new_receipt_is_not_replaced_by_legacy(self):
+        self.seed_user_config()
+        self.assertEqual(self.command("install").returncode, 0)
+        receipt = self.home / ".local/state/linux-formulas/integrations/toshy.json"
+        original = receipt.read_bytes()
+        legacy = self.home / ".local/state/fedora-brew/integrations/toshy.json"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text('{"old": true}')
+        self.command("doctor")
+        self.assertEqual(receipt.read_bytes(), original)
+        self.assertEqual(self.command("uninstall").returncode, 0)
+        self.assertIn("No Homebrew Toshy integration receipt found", self.command("uninstall").stdout)
+
     def test_newer_manual_install_is_refused_without_changes(self):
         self.seed_user_config("20990101")
         result = self.command("migrate")

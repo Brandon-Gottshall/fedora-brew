@@ -45,3 +45,15 @@ test "$session_dirs" = "/opt/homebrew-test/share:$HOME/.local/share/flatpak/expo
 "$repo_root/scripts/bootstrap-desktop" --remove
 test ! -e "$environment_file"
 test ! -e "$plasma_file"
+
+# Existing releases must be removable, including without a new install first.
+legacy_environment="$XDG_CONFIG_HOME/environment.d/60-fedora-brew-xdg-data.conf"
+legacy_plasma="$XDG_CONFIG_HOME/plasma-workspace/env/60-fedora-brew-xdg-data.sh"
+printf '# Managed by fedora-brew bootstrap.\nXDG_DATA_DIRS=/old/share:/usr/share\n' > "$legacy_environment"
+printf '# Managed by fedora-brew bootstrap.\n' > "$legacy_plasma"
+"$repo_root/scripts/bootstrap-desktop" --remove
+test ! -e "$legacy_environment"
+test ! -e "$legacy_plasma"
+printf '# user-owned config\n' > "$legacy_environment"
+"$repo_root/scripts/bootstrap-desktop"
+test -f "$legacy_environment"

@@ -74,6 +74,20 @@ class Context:
         self.state_root = Path(os.environ.get("XDG_STATE_HOME", self.home / ".local/state")) / "linux-formulas"
         self.config = self.home / ".config/toshy"
         self.receipt = self.state_root / "integrations/toshy.json"
+        legacy_receipt = self.state_root.parent / "fedora-brew/integrations/toshy.json"
+        migration_marker = self.state_root / "integrations/.toshy-legacy-migrated"
+        if not self.receipt.exists() and not migration_marker.exists() and legacy_receipt.is_file():
+            if self.dry_run:
+                self.receipt = legacy_receipt
+            else:
+                # Receipt backup paths are absolute: keep snapshots in place.
+                self.receipt.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(legacy_receipt, self.receipt)
+                migration_marker.touch()
+        elif self.receipt.exists() and legacy_receipt.is_file() and not self.dry_run:
+            # A new receipt wins, including after it is subsequently uninstalled.
+            migration_marker.touch()
+
         self.runtime_link = Path(os.environ.get("XDG_STATE_HOME", self.home / ".local/state")) / "toshy/runtime"
 
 
