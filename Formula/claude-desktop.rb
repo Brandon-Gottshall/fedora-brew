@@ -11,10 +11,9 @@ class ClaudeDesktop < Formula
     skip "release metadata is read from Anthropic's APT index by update-claude-desktop.py"
   end
 
-  depends_on arch: :x86_64
-  depends_on :linux
   depends_on "patchelf" => :build
   depends_on "alsa-lib"
+  depends_on arch: :x86_64
   depends_on "at-spi2-core"
   depends_on "cairo"
   depends_on "cups"
@@ -27,6 +26,7 @@ class ClaudeDesktop < Formula
   depends_on "libxfixes"
   depends_on "libxkbcommon"
   depends_on "libxrandr"
+  depends_on :linux
   depends_on "mesa"
   depends_on "nspr"
   depends_on "nss"
