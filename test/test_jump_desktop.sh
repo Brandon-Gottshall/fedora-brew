@@ -106,7 +106,7 @@ fi
 printf "==> Verifying Jump Desktop manifest in catalog...\n"
 manifest="$repo_root/packages/jump-desktop.yaml"
 [[ -f "$manifest" ]]
-grep -Fq 'formula: Brandon-Gottshall/fedora-brew/jump-desktop' "$manifest"
+grep -Fq 'formula: Brandon-Gottshall/linux-formulas/jump-desktop' "$manifest"
 grep -Eq '^ +cask: [^ ]+/jump-desktop-mac$' "$manifest"
 
 printf "==> Verifying distinct formula and macOS cask tokens...\n"

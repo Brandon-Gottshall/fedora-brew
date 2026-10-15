@@ -12,4 +12,4 @@ backends:
     - Disables the bundled updater so lifecycle ownership is unambiguous
     cons:
     - Linux x86_64 only
-    formula: Brandon-Gottshall/fedora-brew/shadow-pc
+    formula: Brandon-Gottshall/linux-formulas/shadow-pc

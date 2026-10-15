@@ -24,8 +24,8 @@ jobs:
           bash test/test_formula.sh
           bash test/test_migration.sh
           brew ruby -- -c Formula/antigravity.rb
-          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
-          brew audit --strict Brandon-Gottshall/fedora-brew/antigravity
+          brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew audit --strict Brandon-Gottshall/linux-formulas/antigravity
       - name: Open update pull request
         uses: peter-evans/create-pull-request@v7
         with:

@@ -11,10 +11,23 @@ module LinuxFormulas
 
     def initialize(config_dir: nil, platform: Platform.new)
       @platform = platform
-      base_dir = config_dir ||
-                 ENV["HOMEBREW_FEDORA_BREW_CONFIG_DIR"] ||
-                 ENV["FEDORA_BREW_CONFIG_DIR"] ||
-                 File.join(ENV["XDG_CONFIG_HOME"] || File.join(Dir.home, ".config"), "fedora-brew")
+      explicit_dir = config_dir ||
+                     ENV["HOMEBREW_LINUX_FORMULAS_CONFIG_DIR"] ||
+                     ENV["LINUX_FORMULAS_CONFIG_DIR"] ||
+                     ENV["HOMEBREW_FEDORA_BREW_CONFIG_DIR"] ||
+                     ENV["FEDORA_BREW_CONFIG_DIR"]
+      config_home = ENV["XDG_CONFIG_HOME"] || File.join(Dir.home, ".config")
+      base_dir = explicit_dir || File.join(config_home, "linux-formulas")
+      # Copy once; keep the original state intact for rollback. Never merge over
+      # an existing new directory, or migrate when a caller supplies a path.
+      legacy_dir = File.join(config_home, "fedora-brew")
+      if explicit_dir.nil? && !File.exist?(base_dir) && File.directory?(legacy_dir)
+        FileUtils.mkdir_p(base_dir)
+        %w[config.json installed.json].each do |name|
+          source = File.join(legacy_dir, name)
+          FileUtils.cp(source, File.join(base_dir, name)) if File.file?(source)
+        end
+      end
       @config_dir = File.expand_path(base_dir)
       @config_file = File.join(@config_dir, "config.json")
       @state_file = File.join(@config_dir, "installed.json")

@@ -18,10 +18,10 @@ backends:
     pros:
     - Installs entirely in user space without sudo
     - Pinned SHA-256 immutable download with strict lifecycle tracking
-    - Integrated with fedora-brew update automation
+    - Integrated with linux-formulas update automation
     cons:
     - Links against host system GUI libraries
-    formula: Brandon-Gottshall/fedora-brew/antigravity
+    formula: Brandon-Gottshall/linux-formulas/antigravity
 distros:
   fedora:
     default: rpm

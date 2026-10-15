@@ -1,6 +1,6 @@
-# Case Study: Adding Google Antigravity 2.x to Fedora Brew
+# Case Study: Adding Google Antigravity 2.x to Linux Formulas
 
-This document records the end-to-end design, implementation decisions, and troubleshooting journey that established **Google Antigravity 2.x** as the founding reference package in `fedora-brew`.
+This document records the end-to-end design, implementation decisions, and troubleshooting journey that established **Google Antigravity 2.x** as the founding reference package in `linux-formulas`.
 
 ---
 
@@ -154,8 +154,8 @@ Homebrew's `/home/linuxbrew/.linuxbrew/share` is missing. As a result, Linux des
 KDE Plasma documents that scripts located in `~/.config/plasma-workspace/env/*.sh` are sourced *before* the desktop environment and autostarted applications (such as Vicinae or KRunner) launch.
 
 `scripts/bootstrap-desktop` configures:
-1. **Generic Fallback**: `~/.config/environment.d/60-fedora-brew-xdg-data.conf`
-2. **KDE Plasma Pre-Startup Hook**: `~/.config/plasma-workspace/env/60-fedora-brew-xdg-data.sh`
+1. **Generic Fallback**: `~/.config/environment.d/60-linux-formulas-xdg-data.conf`
+2. **KDE Plasma Pre-Startup Hook**: `~/.config/plasma-workspace/env/60-linux-formulas-xdg-data.sh`
 3. **Current-Session Notification**: Updates systemd and DBus activation environments (`systemctl --user set-environment`, `dbus-update-activation-environment`) and rebuilds sycoca cache (`kbuildsycoca6`).
 
 This generic hook guarantees that any formula installing `.desktop` entries to `share/applications` is indexed natively without requiring one-off symlinks in `~/.local/share/applications`.

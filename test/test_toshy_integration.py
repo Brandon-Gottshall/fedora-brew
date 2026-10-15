@@ -112,7 +112,7 @@ class ToshyIntegrationTests(unittest.TestCase):
         self.assertTrue((self.home / ".local/bin/toshy-status").is_symlink())
         runtime_link = self.home / ".local/state/toshy/runtime"
         self.assertEqual(runtime_link.resolve(), self.runtime.resolve())
-        receipt = self.home / ".local/state/fedora-brew/integrations/toshy.json"
+        receipt = self.home / ".local/state/linux-formulas/integrations/toshy.json"
         self.assertEqual(json.loads(receipt.read_text())["release"], "26.08.0")
 
         result = self.command("uninstall")
@@ -127,7 +127,7 @@ class ToshyIntegrationTests(unittest.TestCase):
         result = self.command("migrate")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("no files or services were changed", result.stdout)
-        self.assertFalse((self.home / ".local/state/fedora-brew").exists())
+        self.assertFalse((self.home / ".local/state/linux-formulas").exists())
 
     def test_newer_manual_install_is_refused_without_changes(self):
         self.seed_user_config("20990101")

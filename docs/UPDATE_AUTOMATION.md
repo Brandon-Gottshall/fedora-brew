@@ -1,12 +1,12 @@
 # Update Automation Guide
 
-This document details the release discovery, checksum verification, and CI automation pipelines used in `fedora-brew`.
+This document details the release discovery, checksum verification, and CI automation pipelines used in `linux-formulas`.
 
 ---
 
 ## 1. Principles of Safe Update Automation
 
-Automated updates in `fedora-brew` must adhere to these rules:
+Automated updates in `linux-formulas` must adhere to these rules:
 
 1. **Strict Version Boundaries**: Scrapers must target specific product generations and reject legacy or malformed links (e.g. rejecting 1.x links for Antigravity).
 2. **Deterministic Checksumming**: Formulas must never use unvalidated or dynamic checksum bypasses. The update pipeline downloads the immutable asset and computes a real SHA-256 hash.
@@ -70,5 +70,5 @@ The updater runs automatically via GitHub Actions (e.g., `.github/workflows/upda
 Where possible, include a `livecheck` block in the formula so users can query the latest version via native Homebrew commands:
 
 ```bash
-brew livecheck Brandon-Gottshall/fedora-brew/antigravity
+brew livecheck Brandon-Gottshall/linux-formulas/antigravity
 ```

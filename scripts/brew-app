@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/brew-app: Standalone runner for Fedora Brew App Manager
+# scripts/brew-app: Standalone runner for Linux Formulas App Manager
 
 set -euo pipefail
 

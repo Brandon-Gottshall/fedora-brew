@@ -16,7 +16,7 @@ On modern Linux desktops, software distribution is fragmented across multiple fo
 
 Users frequently ask: *"I want application X, but I care about how it integrates with my machine."*
 
-Instead of forcing a single backend or trying to make Flatpak and RPM look like identical Homebrew packages inside the Cellar, `fedora-brew` implements a **selection and resolution layer**:
+Instead of forcing a single backend or trying to make Flatpak and RPM look like identical Homebrew packages inside the Cellar, `linux-formulas` implements a **selection and resolution layer**:
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -73,7 +73,7 @@ Google Antigravity has multiple Linux backends available:
      Summary: Homebrew Cellar Standalone formula (Tarball payload)
      • [Pro] Installs entirely in user space without sudo
      • [Pro] Pinned SHA-256 immutable download with strict lifecycle tracking
-     • [Pro] Integrated with fedora-brew update automation
+     • [Pro] Integrated with linux-formulas update automation
      • [Con] Links against host system GUI libraries
 
 Choose installation method [1-3] (default: 1):
@@ -157,7 +157,7 @@ as Toshy stay in shared Linux backends.
 
 ## 5. State Tracking & Preferences
 
-`brew app` tracks application state in `~/.config/fedora-brew/`:
+`brew app` tracks application state in `~/.config/linux-formulas/`:
 
 * **`installed.json`**: Records which backend installed each application so `upgrade` and `uninstall` automatically dispatch to the correct engine without re-prompting.
 * **`config.json`**: Global preferences.

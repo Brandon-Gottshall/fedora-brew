@@ -25,4 +25,4 @@ macos:
       - Automatic guided installer and system service registration
       cons:
       - Supported on macOS only; no native Linux Connect agent exists
-      cask: Brandon-Gottshall/fedora-brew/jump-desktop-connect
+      cask: Brandon-Gottshall/linux-formulas/jump-desktop-connect

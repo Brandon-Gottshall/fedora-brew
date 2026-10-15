@@ -5,7 +5,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 formula="$repo_root/Formula/shadow-pc.rb"
 migration="$repo_root/scripts/migrate-shadow-pc"
-test_root="$(mktemp -d /tmp/fedora-brew-shadow-test.XXXXXX)"
+test_root="$(mktemp -d /tmp/linux-formulas-shadow-test.XXXXXX)"
 trap 'rm -rf "$test_root"' EXIT
 
 grep -Fq 'version "9.9.10457.17055"' "$formula"

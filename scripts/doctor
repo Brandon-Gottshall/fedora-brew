@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/doctor: Verify health of fedora-brew tap and desktop integrations
+# scripts/doctor: Verify health of linux-formulas tap and desktop integrations
 
 set -euo pipefail
 
@@ -15,7 +15,7 @@ fail() { printf "${RED}✖${NC} %s\n" "$1"; }
 info() { printf "${BLUE}ℹ${NC} %s\n" "$1"; }
 
 printf "========================================\n"
-printf "        Fedora Brew Tap Doctor          \n"
+printf "        Linux Formulas Tap Doctor          \n"
 printf "========================================\n\n"
 
 errors=0
@@ -48,8 +48,8 @@ fi
 # 3. Check Bootstrap Configuration Files
 info "Checking desktop bootstrap configuration files..."
 xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
-env_conf="$xdg_config_home/environment.d/60-fedora-brew-xdg-data.conf"
-plasma_sh="$xdg_config_home/plasma-workspace/env/60-fedora-brew-xdg-data.sh"
+env_conf="$xdg_config_home/environment.d/60-linux-formulas-xdg-data.conf"
+plasma_sh="$xdg_config_home/plasma-workspace/env/60-linux-formulas-xdg-data.sh"
 
 if [[ -f "$env_conf" ]]; then
   pass "Generic environment.d hook exists ($env_conf)"
@@ -125,7 +125,7 @@ fi
 
 printf "\n========================================\n"
 if [[ $errors -eq 0 && $warnings -eq 0 ]]; then
-  printf "${GREEN}All checks passed! Fedora Brew tap is in optimal health.${NC}\n"
+  printf "${GREEN}All checks passed! Linux Formulas tap is in optimal health.${NC}\n"
 elif [[ $errors -eq 0 ]]; then
   printf "${YELLOW}Doctor passed with %d warning(s). Run 'scripts/bootstrap-desktop' if needed.${NC}\n" "$warnings"
 else

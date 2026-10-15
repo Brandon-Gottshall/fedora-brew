@@ -9,7 +9,7 @@ known_shas=(
 if [[ -n "${SHADOW_PC_EXPECTED_SHA256:-}" ]]; then
   known_shas=("$SHADOW_PC_EXPECTED_SHA256")
 fi
-formula="${SHADOW_PC_FORMULA:-Brandon-Gottshall/fedora-brew/shadow-pc}"
+formula="${SHADOW_PC_FORMULA:-Brandon-Gottshall/linux-formulas/shadow-pc}"
 brew_bin="${BREW_BIN:-brew}"
 source_path="${HOME}/Downloads/ShadowPC.appimage"
 dry_run=false
@@ -48,7 +48,7 @@ if ! $known; then
   exit 1
 fi
 
-state_root="${XDG_STATE_HOME:-${HOME}/.local/state}/fedora-brew"
+state_root="${XDG_STATE_HOME:-${HOME}/.local/state}/linux-formulas"
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
 backup_dir="$state_root/backups/shadow-pc/$timestamp"
 backup_path="$backup_dir/$(basename "$source_path")"

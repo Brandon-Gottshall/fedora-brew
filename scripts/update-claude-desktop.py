@@ -63,7 +63,7 @@ def parse_index(contents: str) -> Release:
 
 
 def fetch_text(url: str) -> str:
-    request = urllib.request.Request(url, headers={"User-Agent": "fedora-brew-updater/1"})
+    request = urllib.request.Request(url, headers={"User-Agent": "linux-formulas-updater/1"})
     with urllib.request.urlopen(request, timeout=60) as response:
         return response.read().decode("utf-8")
 
@@ -76,7 +76,7 @@ def verify_artifact(release: Release, artifact: Path | None = None) -> None:
                 digest.update(chunk)
     else:
         request = urllib.request.Request(
-            release.url, headers={"User-Agent": "fedora-brew-updater/1"}
+            release.url, headers={"User-Agent": "linux-formulas-updater/1"}
         )
         with urllib.request.urlopen(request, timeout=180) as response:
             while chunk := response.read(1024 * 1024):

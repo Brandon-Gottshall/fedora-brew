@@ -35,12 +35,12 @@ fi
 brew_share="$(brew --prefix)/share"
 xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 environment_dir="$xdg_config_home/environment.d"
-environment_file="$environment_dir/60-fedora-brew-xdg-data.conf"
+environment_file="$environment_dir/60-linux-formulas-xdg-data.conf"
 plasma_dir="$xdg_config_home/plasma-workspace/env"
-plasma_file="$plasma_dir/60-fedora-brew-xdg-data.sh"
+plasma_file="$plasma_dir/60-linux-formulas-xdg-data.sh"
 default_dirs="/usr/local/share:/usr/share"
 current_dirs="${XDG_DATA_DIRS:-$default_dirs}"
-managed_marker="# Managed by fedora-brew bootstrap."
+managed_marker="# Managed by linux-formulas bootstrap."
 
 remove_path() {
   local input="$1" output="" item
@@ -61,7 +61,7 @@ if [[ "$action" == remove ]]; then
     fi
   done
   new_dirs="$base_dirs"
-  printf 'Removed Fedora Brew desktop session integration.\n'
+  printf 'Removed Linux Formulas desktop session integration.\n'
 else
   mkdir -p "$environment_dir" "$plasma_dir"
   new_dirs="$brew_share:$base_dirs"
@@ -91,21 +91,21 @@ EOF
   printf 'Configured Plasma pre-startup environment: %s\n' "$plasma_file"
 fi
 
-if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v systemctl >/dev/null 2>&1; then
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] && command -v systemctl >/dev/null 2>&1; then
   systemctl --user set-environment "XDG_DATA_DIRS=$new_dirs" 2>/dev/null || true
 fi
-if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] &&
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] &&
    command -v dbus-update-activation-environment >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" dbus-update-activation-environment --systemd XDG_DATA_DIRS 2>/dev/null || true
 fi
-if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] &&
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] &&
    command -v update-desktop-database >/dev/null 2>&1 &&
    [[ -d "$brew_share/applications" ]]; then
   XDG_DATA_DIRS="$new_dirs" update-desktop-database "$brew_share/applications" 2>/dev/null || true
 fi
-if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v kbuildsycoca6 >/dev/null 2>&1; then
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] && command -v kbuildsycoca6 >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
-elif [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v kbuildsycoca5 >/dev/null 2>&1; then
+elif [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] && command -v kbuildsycoca5 >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
 fi
 

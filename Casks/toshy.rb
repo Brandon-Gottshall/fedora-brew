@@ -36,8 +36,8 @@ cask "toshy" do
 
   zap trash: [
     "~/.config/toshy",
-    "~/.local/state/fedora-brew/backups/toshy",
-    "~/.local/state/fedora-brew/integrations/toshy.json",
+    "~/.local/state/linux-formulas/backups/toshy",
+    "~/.local/state/linux-formulas/integrations/toshy.json",
     "~/.local/state/toshy/runtime",
   ]
 end

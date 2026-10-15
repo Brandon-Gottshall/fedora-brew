@@ -12,4 +12,4 @@ backends:
     - Updates through ordinary Homebrew commands
     cons:
     - Requires existing Fedora input and uinput prerequisites
-    cask: Brandon-Gottshall/fedora-brew/toshy
+    cask: Brandon-Gottshall/linux-formulas/toshy

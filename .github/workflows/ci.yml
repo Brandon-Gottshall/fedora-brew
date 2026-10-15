@@ -21,6 +21,8 @@ jobs:
       - name: Test portable tooling
         run: |
           python3 -m unittest discover -s test -p 'test_*.py'
+          brew ruby -- test/test_backends.rb
+          brew ruby -- test/test_state_migration.rb
           for test_file in test/test_*.js; do node "$test_file"; done
           for source in Formula/*.rb Casks/*.rb lib/linux_formulas/*.rb lib/linux_formulas/backends/*.rb; do
             brew ruby -- -c "$source"
@@ -36,6 +38,7 @@ jobs:
           bash test/test_jump_desktop.sh
           bash test/test_shadow_pc.sh
           bash test/test_claude_desktop.sh
+          bash test/test_new_formulas.sh
           brew ruby -- -c Formula/antigravity.rb
           brew ruby -- -c Formula/claude-desktop.rb
           brew ruby -- -c Formula/shadow-pc.rb
@@ -45,17 +48,18 @@ jobs:
       - name: Audit formula
         if: runner.os == 'Linux'
         run: |
-          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
-          brew audit --strict Brandon-Gottshall/fedora-brew/antigravity
-          brew audit --strict Brandon-Gottshall/fedora-brew/claude-desktop
-          brew audit --strict Brandon-Gottshall/fedora-brew/shadow-pc
-          brew audit --strict Brandon-Gottshall/fedora-brew/toshy-runtime
-          brew audit --cask --strict Brandon-Gottshall/fedora-brew/toshy
+          brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew audit --strict Brandon-Gottshall/linux-formulas/antigravity
+          brew audit --strict Brandon-Gottshall/linux-formulas/claude-desktop
+          brew audit --strict Brandon-Gottshall/linux-formulas/shadow-pc
+          brew audit --strict Brandon-Gottshall/linux-formulas/toshy-runtime
+          brew audit --cask --strict Brandon-Gottshall/linux-formulas/toshy
+          bash test/test_jump_desktop_resolution.sh
       - name: Build and test Toshy runtime
         if: runner.os == 'Linux'
         run: |
-          brew install --build-from-source Brandon-Gottshall/fedora-brew/toshy-runtime
-          brew test Brandon-Gottshall/fedora-brew/toshy-runtime
+          brew install --build-from-source Brandon-Gottshall/linux-formulas/toshy-runtime
+          brew test Brandon-Gottshall/linux-formulas/toshy-runtime
 
   cachyos:
     runs-on: ubuntu-latest
@@ -70,12 +74,12 @@ jobs:
             set -euo pipefail
             git -c safe.directory=/workspace clone /workspace /home/linuxbrew/linux-formulas
             cd /home/linuxbrew/linux-formulas
-            brew tap --custom-remote Brandon-Gottshall/fedora-brew "$PWD"
+            brew tap --custom-remote Brandon-Gottshall/linux-formulas "$PWD"
             bash test/test_app_manager.sh
             bash test/test_desktop_bootstrap.sh
-            for formula in claude-desktop vicinae; do
-              brew install --build-from-source "Brandon-Gottshall/fedora-brew/$formula"
-              brew test "Brandon-Gottshall/fedora-brew/$formula"
+            for formula in claude-desktop vicinae flare; do
+              brew install --build-from-source "Brandon-Gottshall/linux-formulas/$formula"
+              brew test "Brandon-Gottshall/linux-formulas/$formula"
             done
             scripts/bootstrap-desktop
           '

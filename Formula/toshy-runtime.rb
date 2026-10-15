@@ -255,7 +255,7 @@ class ToshyRuntime < Formula
   def caveats
     <<~EOS
       This formula supplies Toshy's runtime. Install the user integration with:
-        brew install --cask Brandon-Gottshall/fedora-brew/toshy
+        brew install --cask Brandon-Gottshall/linux-formulas/toshy
     EOS
   end
 

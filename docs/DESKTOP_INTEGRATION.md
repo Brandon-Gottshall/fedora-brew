@@ -1,6 +1,6 @@
 # Desktop Integration Architecture
 
-This document explains how `fedora-brew` bridges Homebrew-installed desktop applications and icons to Linux desktop environments (KDE Plasma, GNOME, XFCE) and application launchers (KRunner, Vicinae, Application Menu).
+This document explains how `linux-formulas` bridges Homebrew-installed desktop applications and icons to Linux desktop environments (KDE Plasma, GNOME, XFCE) and application launchers (KRunner, Vicinae, Application Menu).
 
 ---
 
@@ -36,7 +36,7 @@ To integrate Homebrew without modifying system-wide protected files in `/etc` or
              ▼                           ▼
  ┌──────────────────────┐    ┌──────────────────────┐
  │    environment.d     │    │   plasma-workspace   │
- │ 60-fedora-brew.conf  │    │ 60-fedora-brew.sh    │
+ │ 60-linux-formulas.conf  │    │ 60-linux-formulas.sh    │
  └──────────┬───────────┘    └──────────┬───────────┘
             │                           │
             ▼                           ▼
@@ -57,12 +57,12 @@ To integrate Homebrew without modifying system-wide protected files in `/etc` or
 ```
 
 ### Layer 1: KDE Plasma Pre-Startup Hook
-* **File Location**: `~/.config/plasma-workspace/env/60-fedora-brew-xdg-data.sh`
+* **File Location**: `~/.config/plasma-workspace/env/60-linux-formulas-xdg-data.sh`
 * **Mechanism**: Plasma sources all executable `.sh` scripts in `plasma-workspace/env/` *prior* to launching the desktop shell and any user autostart applications.
 * **Why this is necessary**: Fedora's display manager initialization often overrides or clears standard `environment.d` variables during login. The Plasma hook ensures Homebrew's share directory is always prepended to `XDG_DATA_DIRS`.
 
 ### Layer 2: Generic `environment.d` Configuration
-* **File Location**: `~/.config/environment.d/60-fedora-brew-xdg-data.conf`
+* **File Location**: `~/.config/environment.d/60-linux-formulas-xdg-data.conf`
 * **Mechanism**: Read by systemd user managers and compatible desktop environments (GNOME, Sway, etc.) at user login.
 
 ### Layer 3: Dynamic Cache & Environment Notification
@@ -78,7 +78,7 @@ During execution, `scripts/bootstrap-desktop` also:
 
 1. **Never Restart Graphical Shells**: Do not execute `plasmashell --replace`, `kquitapp`, or kill compositor processes. Doing so causes open terminals (like Warp) and user windows to crash.
 2. **Idempotence**: Sourcing or running the script multiple times will never duplicate entries in `XDG_DATA_DIRS`.
-3. **Safe Uninstallation**: Running `scripts/bootstrap-desktop --remove` removes only files tagged with `# Managed by fedora-brew bootstrap.` and restores clean baseline paths.
+3. **Safe Uninstallation**: Running `scripts/bootstrap-desktop --remove` removes only files tagged with `# Managed by linux-formulas bootstrap.` and restores clean baseline paths.
 
 ---
 

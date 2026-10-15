@@ -1,6 +1,6 @@
 # Cross-Platform Machine Setup & Brewfile Strategy
 
-This document describes how to structure reproducible machine configurations across **Fedora Linux** and **macOS** using Homebrew and `fedora-brew`.
+This document describes how to structure reproducible machine configurations across **Fedora Linux** and **macOS** using Homebrew and `linux-formulas`.
 
 ---
 
@@ -10,7 +10,7 @@ To keep configuration clean and avoid mixing application packaging with personal
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Layer 1: Personal Tap (fedora-brew / homebrew-fedora-brew) │
+│  Layer 1: Personal Tap (linux-formulas / homebrew-linux-formulas) │
 │  - Package formulas (antigravity.rb, etc.)                  │
 │  - Formula tests, desktop bootstrap script, updaters        │
 └──────────────────────────────┬──────────────────────────────┘
@@ -42,7 +42,7 @@ Homebrew evaluates `Brewfile` files using Ruby, enabling platform conditionals d
 # Brewfile: Cross-platform declarations
 
 # 1. Tap personal repository
-tap "Brandon-Gottshall/fedora-brew", "https://github.com/Brandon-Gottshall/fedora-brew"
+tap "Brandon-Gottshall/linux-formulas", "https://github.com/Brandon-Gottshall/linux-formulas"
 
 # 2. Universal CLI Tools (Linux & macOS)
 brew "git"
@@ -61,13 +61,13 @@ if OS.mac?
   cask "visual-studio-code"
 elsif OS.linux?
   # Linux: Use personal tap formulas for custom packages
-  brew "Brandon-Gottshall/fedora-brew/antigravity"
+  brew "Brandon-Gottshall/linux-formulas/antigravity"
 end
 ```
 
 > [!NOTE]
 > **Fully Qualified Formula Names**:
-> On Linux, always reference custom graphical formulas by their fully-qualified name (e.g. `Brandon-Gottshall/fedora-brew/antigravity`) to prevent naming collisions with upstream Homebrew formulas or macOS casks.
+> On Linux, always reference custom graphical formulas by their fully-qualified name (e.g. `Brandon-Gottshall/linux-formulas/antigravity`) to prevent naming collisions with upstream Homebrew formulas or macOS casks.
 
 ---
 
@@ -80,10 +80,10 @@ end
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 # 2. Attach personal tap
-brew tap Brandon-Gottshall/fedora-brew https://github.com/Brandon-Gottshall/fedora-brew
+brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/linux-formulas
 
 # 3. Run desktop bootstrap once
-"$(brew --prefix)/Homebrew/Library/Taps/brandon-gottshall/homebrew-fedora-brew/scripts/bootstrap-desktop"
+"$(brew --prefix)/Homebrew/Library/Taps/brandon-gottshall/homebrew-linux-formulas/scripts/bootstrap-desktop"
 
 # 4. Bundle software from Brewfile
 brew bundle --file=~/dotfiles/Brewfile

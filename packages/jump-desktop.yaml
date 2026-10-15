@@ -25,7 +25,7 @@ backends:
       route before use.
     - Browser session import copies sensitive authentication material into the wrapper profile; protect
       that profile.
-    formula: Brandon-Gottshall/fedora-brew/jump-desktop
+    formula: Brandon-Gottshall/linux-formulas/jump-desktop
   flatpak:
     summary: Alternative Linux Client (Remmina on Flathub)
     pros:
@@ -64,4 +64,4 @@ macos:
       - Cloud synchronization and automatic connection setup
       cons:
       - macOS client only; Jump Desktop does not publish a native Linux client binary
-      cask: Brandon-Gottshall/fedora-brew/jump-desktop-mac
+      cask: Brandon-Gottshall/linux-formulas/jump-desktop-mac

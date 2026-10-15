@@ -21,16 +21,16 @@ export HOME="$fixture/home"
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/usr/share"
 export PATH="$fixture/bin:$PATH"
-export FEDORA_BREW_TESTING=1
+export LINUX_FORMULAS_TESTING=1
 
 "$repo_root/scripts/bootstrap-desktop"
 
-environment_file="$XDG_CONFIG_HOME/environment.d/60-fedora-brew-xdg-data.conf"
-plasma_file="$XDG_CONFIG_HOME/plasma-workspace/env/60-fedora-brew-xdg-data.sh"
+environment_file="$XDG_CONFIG_HOME/environment.d/60-linux-formulas-xdg-data.conf"
+plasma_file="$XDG_CONFIG_HOME/plasma-workspace/env/60-linux-formulas-xdg-data.sh"
 test -f "$environment_file"
 test -f "$plasma_file"
-grep -Fqx '# Managed by fedora-brew bootstrap.' "$environment_file"
-grep -Fqx '# Managed by fedora-brew bootstrap.' "$plasma_file"
+grep -Fqx '# Managed by linux-formulas bootstrap.' "$environment_file"
+grep -Fqx '# Managed by linux-formulas bootstrap.' "$plasma_file"
 grep -Fqx "XDG_DATA_DIRS=/opt/homebrew-test/share:$XDG_DATA_DIRS" "$environment_file"
 ! grep -Fq 'restart plasma-plasmashell' "$repo_root/scripts/bootstrap-desktop"
 

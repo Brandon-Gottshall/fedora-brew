@@ -1,6 +1,6 @@
 # Step-by-Step SOP: Adding a New Package
 
-This Standard Operating Procedure (SOP) outlines the exact workflow for adding a new application to `fedora-brew`.
+This Standard Operating Procedure (SOP) outlines the exact workflow for adding a new application to `linux-formulas`.
 
 ---
 
@@ -100,26 +100,26 @@ Run these validation commands locally:
 brew ruby -- -c Formula/myapp.rb
 
 # Homebrew style (RuboCop)
-brew style Brandon-Gottshall/fedora-brew/myapp
+brew style Brandon-Gottshall/linux-formulas/myapp
 
 # Homebrew strict audit
-brew audit --strict Brandon-Gottshall/fedora-brew/myapp
+brew audit --strict Brandon-Gottshall/linux-formulas/myapp
 ```
 
 ### 2. Lifecycle Testing
 ```bash
 # Install
-brew install --build-from-source Brandon-Gottshall/fedora-brew/myapp
+brew install --build-from-source Brandon-Gottshall/linux-formulas/myapp
 
 # Run tests
-brew test Brandon-Gottshall/fedora-brew/myapp
+brew test Brandon-Gottshall/linux-formulas/myapp
 
 # Verify desktop entry validity
 desktop-file-validate $(brew --prefix)/share/applications/myapp.desktop
 
 # Test uninstall and reinstall
 brew uninstall myapp
-brew install Brandon-Gottshall/fedora-brew/myapp
+brew install Brandon-Gottshall/linux-formulas/myapp
 ```
 
 ### 3. Desktop Discovery Testing

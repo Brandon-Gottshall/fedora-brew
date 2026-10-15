@@ -4,7 +4,7 @@
 set -euo pipefail
 export HOMEBREW_NO_AUTO_UPDATE=1
 
-tap="${JUMP_DESKTOP_TEST_TAP:-Brandon-Gottshall/fedora-brew}"
+tap="${JUMP_DESKTOP_TEST_TAP:-Brandon-Gottshall/linux-formulas}"
 command -v brew >/dev/null
 command -v node >/dev/null
 

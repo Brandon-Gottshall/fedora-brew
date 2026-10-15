@@ -22,10 +22,10 @@ jobs:
           python3 -m unittest discover -s test -p 'test_*.py'
           bash test/test_claude_desktop.sh
           brew ruby -- -c Formula/claude-desktop.rb
-          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
-          brew audit --strict Brandon-Gottshall/fedora-brew/claude-desktop
-          brew install --build-from-source Brandon-Gottshall/fedora-brew/claude-desktop
-          brew test Brandon-Gottshall/fedora-brew/claude-desktop
+          brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew audit --strict Brandon-Gottshall/linux-formulas/claude-desktop
+          brew install --build-from-source Brandon-Gottshall/linux-formulas/claude-desktop
+          brew test Brandon-Gottshall/linux-formulas/claude-desktop
       - name: Open update pull request
         uses: peter-evans/create-pull-request@v7
         with:

@@ -1,6 +1,6 @@
 # Package Admission & Ownership Policy
 
-This document defines the admission criteria, package manager boundaries, and ownership rules for the `fedora-brew` tap.
+This document defines the admission criteria, package manager boundaries, and ownership rules for the `linux-formulas` tap.
 
 ---
 
@@ -10,7 +10,7 @@ In modern Linux environments, multiple package managers frequently coexist (DNF,
 
 * **DNF / RPM Packages**: Owned, updated, and removed exclusively by DNF.
 * **Flatpak Applications**: Owned, updated, and removed exclusively by Flatpak.
-* **Fedora Brew Formulae**: Owned, updated, and removed exclusively by Homebrew.
+* **Linux Formulas Formulae**: Owned, updated, and removed exclusively by Homebrew.
 
 > [!CAUTION]
 > **No Delegated Package Installation:**

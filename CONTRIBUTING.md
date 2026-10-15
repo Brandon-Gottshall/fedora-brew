@@ -1,6 +1,6 @@
-# Contributing to Fedora Brew
+# Contributing to Linux Formulas
 
-Thank you for contributing to `fedora-brew`! This repository maintains personal Homebrew formulae for self-contained Linux applications.
+Thank you for contributing to `linux-formulas`! This repository maintains personal Homebrew formulae for self-contained Linux applications.
 
 ---
 
@@ -37,14 +37,14 @@ bash test/test_migration.sh
 brew ruby -- -c Formula/<formula>.rb
 
 # 4. RuboCop style check
-brew style Brandon-Gottshall/fedora-brew/<formula>
+brew style Brandon-Gottshall/linux-formulas/<formula>
 
 # 5. Strict Homebrew audit
-brew audit --strict Brandon-Gottshall/fedora-brew/<formula>
+brew audit --strict Brandon-Gottshall/linux-formulas/<formula>
 
 # 6. Test formula installation & static assertions
-brew install --build-from-source Brandon-Gottshall/fedora-brew/<formula>
-brew test Brandon-Gottshall/fedora-brew/<formula>
+brew install --build-from-source Brandon-Gottshall/linux-formulas/<formula>
+brew test Brandon-Gottshall/linux-formulas/<formula>
 ```
 
 ---

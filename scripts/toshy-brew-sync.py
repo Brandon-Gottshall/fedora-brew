@@ -71,7 +71,7 @@ class Context:
         self.home = self.home.resolve()
         self.source = self.source.resolve()
         self.runtime = self.runtime.resolve()
-        self.state_root = Path(os.environ.get("XDG_STATE_HOME", self.home / ".local/state")) / "fedora-brew"
+        self.state_root = Path(os.environ.get("XDG_STATE_HOME", self.home / ".local/state")) / "linux-formulas"
         self.config = self.home / ".config/toshy"
         self.receipt = self.state_root / "integrations/toshy.json"
         self.runtime_link = Path(os.environ.get("XDG_STATE_HOME", self.home / ".local/state")) / "toshy/runtime"
@@ -307,7 +307,7 @@ def install_external(ctx: Context, paths: dict[str, Path]) -> dict[str, str]:
 
 def stage_config(ctx: Context, old_receipt: dict) -> tuple[Path, list[str]]:
     ctx.config.parent.mkdir(parents=True, exist_ok=True)
-    stage = Path(tempfile.mkdtemp(prefix=".toshy-fedora-brew-stage-", dir=ctx.config.parent))
+    stage = Path(tempfile.mkdtemp(prefix=".toshy-linux-formulas-stage-", dir=ctx.config.parent))
     if ctx.config.is_dir():
         shutil.copytree(ctx.config, stage, symlinks=True, dirs_exist_ok=True)
     for relative in old_receipt.get("managed_config_paths", []):

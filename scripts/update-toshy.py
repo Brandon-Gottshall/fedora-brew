@@ -24,7 +24,7 @@ class Release:
 
 
 def fetch_json(url: str) -> dict:
-    request = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json", "User-Agent": "fedora-brew-updater/1"})
+    request = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json", "User-Agent": "linux-formulas-updater/1"})
     with urllib.request.urlopen(request, timeout=60) as response:
         return json.load(response)
 
@@ -42,7 +42,7 @@ def discover(payload: dict) -> Release:
 
 def sha256(url: str) -> str:
     digest = hashlib.sha256()
-    request = urllib.request.Request(url, headers={"User-Agent": "fedora-brew-updater/1"})
+    request = urllib.request.Request(url, headers={"User-Agent": "linux-formulas-updater/1"})
     with urllib.request.urlopen(request, timeout=120) as response:
         while chunk := response.read(1024 * 1024):
             digest.update(chunk)

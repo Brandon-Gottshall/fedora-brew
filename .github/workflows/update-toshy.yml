@@ -23,11 +23,11 @@ jobs:
           python3 -m unittest discover -s test -p 'test_*.py'
           brew ruby -- -c Formula/toshy-runtime.rb
           brew ruby -- -c Casks/toshy.rb
-          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
-          brew audit --strict Brandon-Gottshall/fedora-brew/toshy-runtime
-          brew audit --cask --strict Brandon-Gottshall/fedora-brew/toshy
-          brew install --build-from-source Brandon-Gottshall/fedora-brew/toshy-runtime
-          brew test Brandon-Gottshall/fedora-brew/toshy-runtime
+          brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew audit --strict Brandon-Gottshall/linux-formulas/toshy-runtime
+          brew audit --cask --strict Brandon-Gottshall/linux-formulas/toshy
+          brew install --build-from-source Brandon-Gottshall/linux-formulas/toshy-runtime
+          brew test Brandon-Gottshall/linux-formulas/toshy-runtime
       - name: Open update pull request
         uses: peter-evans/create-pull-request@v7
         with:

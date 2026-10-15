@@ -18,4 +18,4 @@ grep -Fq 'system "ar", "x", cached_download' "$formula"
 ! grep -Eq '(postinst|postrm)' "$formula"
 
 grep -Fq 'default: brew' "$manifest"
-grep -Fq 'formula: Brandon-Gottshall/fedora-brew/claude-desktop' "$manifest"
+grep -Fq 'formula: Brandon-Gottshall/linux-formulas/claude-desktop' "$manifest"

@@ -16,7 +16,7 @@ backends:
     app_id: org.vicinae.Vicinae
   brew:
     summary: Homebrew-managed extraction of the upstream AppImage
-    formula: Brandon-Gottshall/fedora-brew/vicinae
+    formula: Brandon-Gottshall/linux-formulas/vicinae
 distros:
   fedora:
     default: rpm
