@@ -27,10 +27,12 @@ class Vicinae < Formula
       exec "#{opt_libexec}/AppRun" "$@"
     SH
 
-    (share/"icons/hicolor").install (libexec/"usr/share/icons/hicolor").children
+    (share/"icons/hicolor").mkpath
+    cp_r (libexec/"usr/share/icons/hicolor").children, share/"icons/hicolor"
     desktop = libexec/"usr/share/applications/vicinae.desktop"
     inreplace desktop, "Exec=vicinae", "Exec=#{opt_bin}/vicinae"
-    (share/"applications").install desktop
+    (share/"applications").mkpath
+    cp desktop, share/"applications/vicinae.desktop"
   end
 
   def caveats
@@ -47,6 +49,8 @@ class Vicinae < Formula
   test do
     assert_match version.to_s, shell_output("#{bin}/vicinae version")
     assert_predicate libexec/"AppRun", :executable?
+    assert_path_exists libexec/"vicinae.desktop"
+    assert_path_exists libexec/"vicinae.png"
     assert_path_exists share/"icons/hicolor/512x512/apps/vicinae.png"
     desktop = (share/"applications/vicinae.desktop").read
     assert_match "Exec=#{opt_bin}/vicinae server --replace", desktop
