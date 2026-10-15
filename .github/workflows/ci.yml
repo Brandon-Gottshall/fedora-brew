@@ -24,9 +24,7 @@ jobs:
           brew ruby -- test/test_backends.rb
           brew ruby -- test/test_state_migration.rb
           for test_file in test/test_*.js; do node "$test_file"; done
-          for source in Formula/*.rb Casks/*.rb lib/linux_formulas/*.rb lib/linux_formulas/backends/*.rb; do
-            brew ruby -- -c "$source"
-          done
+          brew ruby -- -e 'ARGV.each { |path| RubyVM::InstructionSequence.compile_file(path); puts "Syntax OK: #{path}" }' Formula/*.rb Casks/*.rb lib/linux_formulas/*.rb lib/linux_formulas/backends/*.rb
       - name: Test Linux tooling
         if: runner.os == 'Linux'
         run: |
@@ -39,11 +37,6 @@ jobs:
           bash test/test_shadow_pc.sh
           bash test/test_claude_desktop.sh
           bash test/test_new_formulas.sh
-          brew ruby -- -c Formula/antigravity.rb
-          brew ruby -- -c Formula/claude-desktop.rb
-          brew ruby -- -c Formula/shadow-pc.rb
-          brew ruby -- -c Formula/toshy-runtime.rb
-          brew ruby -- -c Casks/toshy.rb
           bash -n scripts/bootstrap-desktop scripts/migrate-antigravity-v1-fedora scripts/migrate-shadow-pc scripts/doctor scripts/brew-app
       - name: Audit formula
         if: runner.os == 'Linux'
