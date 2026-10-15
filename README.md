@@ -243,8 +243,10 @@ brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/f
 brew trust --tap Brandon-Gottshall/linux-formulas
 ```
 
-After the repository rename, `brew tap Brandon-Gottshall/linux-formulas` works
-without a custom URL. Update Brewfiles and scripts to the new tap identity.
+After the repository rename, use
+`brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/linux-formulas`.
+Keep the explicit URL: Homebrew otherwise assumes the repository is named
+`homebrew-linux-formulas`. Update Brewfiles and scripts to the new tap identity.
 Keep the old tap until packages installed from it have been moved. For each
 installed formula, reinstall using the new fully qualified name, verify it,
 then remove the old tap once no installed packages depend on it. Back up
