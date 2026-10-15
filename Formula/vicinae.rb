@@ -1,19 +1,17 @@
 class Vicinae < Formula
   desc "Native extensible command palette for Linux desktops"
   homepage "https://vicinae.com"
-  version "0.29.1"
   license "GPL-3.0-only"
 
-  on_intel do
+  depends_on :linux
+
+  if Hardware::CPU.intel?
     url "https://github.com/vicinaehq/vicinae/releases/download/v0.29.1/Vicinae-x86_64.AppImage"
     sha256 "44906f2290f0934572f1977de8aa529c3b67d104025a489b32f226fe3b0f3dd9"
-  end
-  on_arm do
+  else
     url "https://github.com/vicinaehq/vicinae/releases/download/v0.29.1/Vicinae-aarch64.AppImage"
     sha256 "369feb20fe987d04ffb1a0b354f28773bd1a1a550a31cdcb22d968e39b141ec0"
   end
-
-  depends_on :linux
 
   def install
     chmod 0755, cached_download

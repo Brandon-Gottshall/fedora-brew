@@ -29,10 +29,9 @@ class Flare < Formula
     system "meson", "install", "-C", "build"
   end
 
-  def post_install
-    system Formula["glib"].opt_bin/"glib-compile-schemas", share/"glib-2.0/schemas"
-    system Formula["glib"].opt_bin/"glib-compile-schemas", HOMEBREW_PREFIX/"share/glib-2.0/schemas"
-    system Formula["gtk4"].opt_bin/"gtk4-update-icon-cache", "-f", "-t", share/"icons/hicolor"
+  post_install_steps do
+    compile_gsettings_schemas
+    update_gtk_icon_cache
   end
 
   def caveats
@@ -51,9 +50,9 @@ class Flare < Formula
     assert_predicate bin/"flare", :executable?
     assert_path_exists share/"applications/de.schmidhuberj.Flare.desktop"
     assert_path_exists share/"glib-2.0/schemas/gschemas.compiled"
-    assert_match "#{bin}/flare", (share/"dbus-1/services/de.schmidhuberj.Flare.service").read
+    assert_match bin/"flare", (share/"dbus-1/services/de.schmidhuberj.Flare.service").read
     assert_match "de.schmidhuberj.Flare", shell_output(
-      "#{Formula["glib"].opt_bin}/gsettings --schemadir=#{share}/glib-2.0/schemas list-schemas",
+      "#{formula_opt_bin("glib")}/gsettings --schemadir=#{share}/glib-2.0/schemas list-schemas",
     )
   end
 end
