@@ -2,7 +2,7 @@
 
 require_relative "base"
 
-module FedoraBrew
+module LinuxFormulas
   module Backends
     class Pacman < Base
       def name

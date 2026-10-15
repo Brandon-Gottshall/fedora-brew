@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module FedoraBrew
+module LinuxFormulas
   class Resolver
     SYNONYMS = {
       "dnf" => "rpm",

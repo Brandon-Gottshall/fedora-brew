@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module FedoraBrew
+module LinuxFormulas
   # Read os-release as data, never source it as shell code.
   class Platform
     attr_reader :id, :family

@@ -2,7 +2,7 @@
 
 require_relative "pacman"
 
-module FedoraBrew
+module LinuxFormulas
   module Backends
     class Aur < Pacman
       # Any pacman-compatible helper can be configured as a single executable

@@ -22,7 +22,7 @@ jobs:
         run: |
           python3 -m unittest discover -s test -p 'test_*.py'
           for test_file in test/test_*.js; do node "$test_file"; done
-          for source in Formula/*.rb Casks/*.rb lib/fedora_brew/*.rb lib/fedora_brew/backends/*.rb; do
+          for source in Formula/*.rb Casks/*.rb lib/linux_formulas/*.rb lib/linux_formulas/backends/*.rb; do
             brew ruby -- -c "$source"
           done
       - name: Test Linux tooling

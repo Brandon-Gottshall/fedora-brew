@@ -2,7 +2,7 @@
 
 require_relative "base"
 
-module FedoraBrew
+module LinuxFormulas
   module Backends
     class Flatpak < Base
       def name

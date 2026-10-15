@@ -9,7 +9,7 @@ require_relative "backends/brew"
 require_relative "backends/pacman"
 require_relative "backends/aur"
 
-module FedoraBrew
+module LinuxFormulas
   class App
     attr_reader :state, :catalog, :resolver, :backends, :dry_run
 

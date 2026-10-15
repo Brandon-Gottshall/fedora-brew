@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 require "stringio"
 require "tmpdir"
-require_relative "../lib/fedora_brew/app"
+require_relative "../lib/linux_formulas/app"
 
 class BackendsTest
   def assert(value, message = "assertion failed")
@@ -60,11 +60,11 @@ class BackendsTest
   def platform(content, host_os: "linux")
     path = File.join(@temp, "os-release")
     File.write(path, content)
-    FedoraBrew::Platform.new(os_release: path, host_os: host_os)
+    LinuxFormulas::Platform.new(os_release: path, host_os: host_os)
   end
 
   def catalog(os)
-    FedoraBrew::Catalog.new(platform: os)
+    LinuxFormulas::Catalog.new(platform: os)
   end
 
   def test_distro_detection_uses_id_and_id_like
@@ -94,8 +94,8 @@ class BackendsTest
 
   def test_resolver_rejects_cross_platform_backend_and_normalizes_native
     os = platform("ID=cachyos\n")
-    state = FedoraBrew::State.new(config_dir: @temp, platform: os)
-    resolver = FedoraBrew::Resolver.new(state: state)
+    state = LinuxFormulas::State.new(config_dir: @temp, platform: os)
+    resolver = LinuxFormulas::Resolver.new(state: state)
     jump = catalog(os).find("jump-desktop")
     assert_equal "pacman", resolver.resolve(jump, explicit_backend: "native", interactive: false)
     assert_raises(RuntimeError) { resolver.resolve(jump, explicit_backend: "rpm", interactive: false) }
@@ -104,8 +104,8 @@ class BackendsTest
   end
 
   def test_pacman_avoids_partial_upgrade_and_preserves_confirmation
-    backend = FedoraBrew::Backends::Pacman.new(dry_run: true)
-    pkg = FedoraBrew::Package.new({"name" => "example"})
+    backend = LinuxFormulas::Backends::Pacman.new(dry_run: true)
+    pkg = LinuxFormulas::Package.new({"name" => "example"})
     out, = capture_io { assert backend.install({}, pkg) }
     assert_includes out, "sudo pacman -Syu --needed example"
     refute_includes out, "--noconfirm"
@@ -117,26 +117,26 @@ class BackendsTest
     helper = File.join(@temp, "custom-helper")
     File.write(helper, "#!/bin/sh\nexit 0\n")
     File.chmod(0755, helper)
-    backend = FedoraBrew::Backends::Aur.new(dry_run: true, helper: helper)
-    pkg = FedoraBrew::Package.new({"name" => "example"})
+    backend = LinuxFormulas::Backends::Aur.new(dry_run: true, helper: helper)
+    pkg = LinuxFormulas::Package.new({"name" => "example"})
     assert backend.available?
     out, = capture_io { assert backend.install({}, pkg) }
     assert_includes out, "#{helper} -Syu --needed example"
     refute_includes out, "sudo"
-    missing = FedoraBrew::Backends::Aur.new(dry_run: true, helper: "missing; touch /tmp/unsafe")
+    missing = LinuxFormulas::Backends::Aur.new(dry_run: true, helper: "missing; touch /tmp/unsafe")
     refute missing.available?
     capture_io { refute missing.install({}, pkg) }
   end
 
   def test_removed_manifest_can_be_uninstalled_with_recorded_backend
-    app = FedoraBrew::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=arch\n"))
+    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=arch\n"))
     app.state.record_install("removed-package", "pacman")
     out, = capture_io { app.run(%w[uninstall removed-package]) }
     assert_includes out, "sudo pacman -R removed-package"
   end
 
   def test_success_records_platform_and_failed_install_does_not
-    app = FedoraBrew::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
     backend = app.backends.fetch("pacman")
     backend.define_singleton_method(:install) { |*| false }
     capture_io { assert_raises(SystemExit) { app.run(%w[install jump-desktop --pacman]) } }
@@ -147,7 +147,7 @@ class BackendsTest
   end
 
   def test_dry_runs_do_not_mutate_installed_state
-    app = FedoraBrew::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=cachyos\n"))
+    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=cachyos\n"))
     capture_io { app.run(%w[install jump-desktop --pacman --yes]) }
     assert_empty app.state.installed
     refute File.exist?(app.state.state_file)

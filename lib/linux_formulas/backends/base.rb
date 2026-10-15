@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module FedoraBrew
+module LinuxFormulas
   module Backends
     class Base
       attr_reader :name, :dry_run

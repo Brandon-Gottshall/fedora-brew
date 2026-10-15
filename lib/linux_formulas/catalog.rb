@@ -4,7 +4,7 @@ require "yaml"
 require "date"
 require_relative "platform"
 
-module FedoraBrew
+module LinuxFormulas
   class Package
     attr_reader :name, :display_name, :description, :homepage, :default_backend, :backends
 

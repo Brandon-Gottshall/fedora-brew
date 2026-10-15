@@ -2,5 +2,5 @@
 
 require_relative "app"
 
-app = FedoraBrew::App.new
+app = LinuxFormulas::App.new
 app.run(ARGV)

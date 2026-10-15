@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "abstract_command"
-require_relative "../lib/fedora_brew/app"
+require_relative "../lib/linux_formulas/app"
 
 module Homebrew
   module Cmd
@@ -13,7 +13,7 @@ module Homebrew
       end
 
       def run
-        app = FedoraBrew::App.new
+        app = LinuxFormulas::App.new
         args = ARGV.dup
         args.shift if args.first == "linux"
         app.run(args)

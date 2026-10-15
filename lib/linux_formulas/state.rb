@@ -5,7 +5,7 @@ require "time"
 require_relative "platform"
 require "fileutils"
 
-module FedoraBrew
+module LinuxFormulas
   class State
     attr_reader :config_dir, :config_file, :state_file, :platform
 

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-runner_script="$script_dir/../lib/fedora_brew/runner.rb"
+runner_script="$script_dir/../lib/linux_formulas/runner.rb"
 
 if command -v ruby >/dev/null 2>&1; then
   exec ruby "$runner_script" "$@"
