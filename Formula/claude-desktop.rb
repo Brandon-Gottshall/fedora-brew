@@ -4,6 +4,7 @@ class ClaudeDesktop < Formula
   url "https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_2.7032.0_amd64.deb"
   version "2.7032.0"
   sha256 "1e7f4504bca5b2f6b2d3c4123d145d727647e77f2ee2d046850711e61e7d7b11"
+  revision 1
   license :cannot_represent
 
   livecheck do
