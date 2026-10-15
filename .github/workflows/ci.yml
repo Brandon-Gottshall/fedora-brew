@@ -33,6 +33,7 @@ jobs:
           bash test/test_migration.sh
           bash test/test_doctor.sh
           bash test/test_app_manager.sh
+          brew ruby -- test/test_brew_commands.rb
           bash test/test_jump_desktop.sh
           bash test/test_shadow_pc.sh
           bash test/test_claude_desktop.sh
