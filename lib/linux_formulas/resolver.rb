@@ -48,7 +48,7 @@ module LinuxFormulas
 
     def normalize_backend(name)
       clean = name.to_s.downcase.strip.sub(/^--/, "")
-      return state.platform.native_backend || "brew" if clean == "native"
+      return state.platform.native_backend || "native" if clean == "native"
 
       SYNONYMS[clean] || clean
     end

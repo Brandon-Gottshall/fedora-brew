@@ -103,6 +103,16 @@ class BackendsTest
     assert_equal "pacman", resolver.resolve(jump, interactive: false)
   end
 
+  def test_unknown_native_backend_is_not_silently_replaced_by_brew
+    os = platform("ID=ubuntu\n")
+    state = LinuxFormulas::State.new(config_dir: @temp, platform: os)
+    resolver = LinuxFormulas::Resolver.new(state: state)
+    package = catalog(os).find("claude-desktop")
+    assert_raises(RuntimeError) { resolver.resolve(package, explicit_backend: "native", interactive: false) }
+    state.set_config("default_backend", "native")
+    assert_equal "brew", resolver.resolve(package, interactive: false)
+  end
+
   def test_pacman_avoids_partial_upgrade_and_preserves_confirmation
     backend = LinuxFormulas::Backends::Pacman.new(dry_run: true)
     pkg = LinuxFormulas::Package.new({"name" => "example"})
