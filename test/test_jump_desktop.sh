@@ -107,6 +107,22 @@ printf "==> Verifying Jump Desktop manifest in catalog...\n"
 manifest="$repo_root/packages/jump-desktop.yaml"
 [[ -f "$manifest" ]]
 grep -Fq 'formula: Brandon-Gottshall/fedora-brew/jump-desktop' "$manifest"
-grep -Fq 'cask: Brandon-Gottshall/fedora-brew/jump-desktop' "$manifest"
+grep -Eq '^ +cask: [^ ]+/jump-desktop-mac$' "$manifest"
+
+printf "==> Verifying distinct formula and macOS cask tokens...\n"
+[[ ! -e "$repo_root/Casks/jump-desktop.rb" ]]
+grep -Fxq 'cask "jump-desktop-mac" do' "$repo_root/Casks/jump-desktop-mac.rb"
+node - "$repo_root" <<'JS'
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = process.argv[2];
+const renames = JSON.parse(fs.readFileSync(path.join(root, 'cask_renames.json'), 'utf8'));
+assert.equal(renames['jump-desktop'], 'jump-desktop-mac');
+for (const [oldToken, newToken] of Object.entries(renames)) {
+  assert.notEqual(oldToken, newToken);
+  assert.ok(fs.existsSync(path.join(root, 'Casks', `${newToken}.rb`)));
+}
+JS
 
 printf "==> Jump Desktop tests passed successfully!\n"

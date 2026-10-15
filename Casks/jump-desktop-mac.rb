@@ -1,4 +1,4 @@
-cask "jump-desktop" do
+cask "jump-desktop-mac" do
   version "9.1.9,90109"
   sha256 "9ed0cf53d0e2a61ca741c2ba999f91e0ca13473b4ca59692a59c67d05c8cc199"
 

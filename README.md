@@ -142,6 +142,40 @@ The formula extracts Anthropic's checksummed Debian payload without running its
 APT maintainer scripts, leaving Homebrew as the sole update owner. Fedora is not
 currently an upstream-supported distribution.
 
+## Jump Desktop: experimental Linux wrapper
+
+**WARNING: The Linux `jump-desktop` formula is an unsupported, third-party
+Electron web wrapper. It is not the official Jump Desktop application or a
+native Linux RDP, VNC, or Fluid client. Do not rely on it for critical remote
+access.** Features and authentication depend on the hosted Jump Desktop web
+client and can break without notice. Keyboard and gesture forwarding is best
+effort; desktop shortcuts can still interfere. The wrapper can modify user KWin
+rules to capture shortcuts, and its external sign-in flow can import browser
+session credentials. Treat the wrapper and its local profile as sensitive.
+
+The wrapper pins its Electron runtime; it does not receive automatic Electron
+security updates. Review runtime updates before using it with sensitive accounts.
+Session cookies and settings remain in `~/.config/jump-desktop/` after uninstall.
+
+Use an explicit formula selection on Linux, because Homebrew's official macOS
+cask also uses the `jump-desktop` token:
+
+```bash
+brew install --formula Brandon-Gottshall/fedora-brew/jump-desktop
+# Or use the catalog's explicit formula backend:
+brew app install jump-desktop --brew
+```
+
+The tap's official macOS application cask is now `jump-desktop-mac`:
+
+```bash
+brew install --cask Brandon-Gottshall/fedora-brew/jump-desktop-mac
+```
+
+`cask_renames.json` maps this tap's previous `jump-desktop` cask token to
+`jump-desktop-mac` for Homebrew migration. The Linux formula keeps its name.
+No cross-tap migration is needed for this cask rename.
+
 ## Shadow PC and Toshy
 
 Install Shadow PC directly or through the catalog:

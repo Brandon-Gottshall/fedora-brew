@@ -1,5 +1,5 @@
 class JumpDesktop < Formula
-  desc "Remote desktop client with advanced hotkey passthrough"
+  desc "Experimental third-party Electron wrapper for Jump Desktop Web"
   homepage "https://jumpdesktop.com"
   url "https://github.com/electron/electron/releases/download/v34.2.0/electron-v34.2.0-linux-x64.zip"
   version "1.0.0"
@@ -46,7 +46,7 @@ class JumpDesktop < Formula
       Type=Application
       Name=Jump Desktop
       GenericName=Remote Desktop Client
-      Comment=High-performance remote desktop client with advanced hotkey passthrough
+      Comment=Experimental third-party wrapper for Jump Desktop Web
       TryExec=#{opt_bin}/jump-desktop
       Exec=#{opt_bin}/jump-desktop %U
       Icon=jump-desktop
@@ -59,6 +59,13 @@ class JumpDesktop < Formula
 
   def caveats
     <<~EOS
+      WARNING: Unsupported third-party Electron web wrapper, not the official
+      Jump Desktop application or a native Linux RDP/VNC/Fluid client.
+      Do not rely on this experimental wrapper for critical remote access.
+      Web features, authentication, and keyboard passthrough may break.
+      The wrapper can modify KWin shortcut rules and import browser sessions.
+      Its pinned Electron runtime does not receive automatic security updates.
+
       Jump Desktop Hotkey Controls:
         • Ctrl + Shift + M : Toggle between Strict Passthrough and Mac Mode (Cmd swap)
         • Ctrl + Shift + F : Toggle Fullscreen (or F11)
