@@ -96,7 +96,7 @@ Homebrew links formula assets under its own prefix. Linux desktop environments d
 
 ```bash
 # 1. Attach tap
-brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/linux-formulas
+brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/fedora-brew
 
 # 2. Trust tap commands
 brew trust --tap Brandon-Gottshall/linux-formulas

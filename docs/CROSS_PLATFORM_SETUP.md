@@ -42,7 +42,7 @@ Homebrew evaluates `Brewfile` files using Ruby, enabling platform conditionals d
 # Brewfile: Cross-platform declarations
 
 # 1. Tap personal repository
-tap "Brandon-Gottshall/linux-formulas", "https://github.com/Brandon-Gottshall/linux-formulas"
+tap "Brandon-Gottshall/linux-formulas", "https://github.com/Brandon-Gottshall/fedora-brew"
 
 # 2. Universal CLI Tools (Linux & macOS)
 brew "git"
@@ -80,7 +80,7 @@ end
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 # 2. Attach personal tap
-brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/linux-formulas
+brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/fedora-brew
 
 # 3. Run desktop bootstrap once
 "$(brew --prefix)/Homebrew/Library/Taps/brandon-gottshall/homebrew-linux-formulas/scripts/bootstrap-desktop"

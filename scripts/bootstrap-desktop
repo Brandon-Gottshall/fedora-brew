@@ -74,13 +74,13 @@ else
   } > "$environment_tmp"
   {
     printf '%s\n' "$managed_marker"
-    printf "_fedora_brew_share='%s'\n" "$brew_share"
+    printf "_linux_formulas_share='%s'\n" "$brew_share"
     cat <<'EOF'
 case ":${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:" in
-  *":${_fedora_brew_share}:"*) ;;
-  *) export XDG_DATA_DIRS="${_fedora_brew_share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
+  *":${_linux_formulas_share}:"*) ;;
+  *) export XDG_DATA_DIRS="${_linux_formulas_share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
 esac
-unset _fedora_brew_share
+unset _linux_formulas_share
 EOF
   } > "$plasma_tmp"
   chmod 0644 "$environment_tmp" "$plasma_tmp"
