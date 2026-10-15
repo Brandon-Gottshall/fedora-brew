@@ -1,5 +1,7 @@
 FROM docker.io/cachyos/cachyos-v3:latest
-RUN pacman -Syu --noconfirm git curl file sudo procps-ng base-devel jq ruby dnf && \
+# Container builders do not allow the nested network namespace used by pacman hooks.
+RUN sed -i '/^\[options\]/a DisableSandboxNetwork' /etc/pacman.conf && \
+    pacman -Syu --needed --noconfirm git curl file sudo procps-ng base-devel jq ruby && \
     useradd -m -s /bin/bash linuxbrew && \
     echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 USER linuxbrew

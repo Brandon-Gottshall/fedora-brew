@@ -41,8 +41,8 @@ class ClaudeDesktop < Formula
 
   def caveats
     <<~EOS
-      This formula repackages Anthropic's official Ubuntu/Debian Linux beta for Fedora.
-      Anthropic does not currently support Fedora directly.
+      This formula repackages Anthropic's official Ubuntu/Debian Linux beta.
+      Fedora and Arch/CachyOS are community packaging targets, not upstream-supported distributions.
 
       The Debian maintainer scripts are intentionally not run, so APT is not registered
       and Homebrew remains the sole update owner. Upgrade with:

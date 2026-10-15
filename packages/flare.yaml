@@ -1,9 +1,14 @@
 name: flare
 display_name: Flare
 description: An unofficial Signal desktop client built with GTK4 and Libadwaita
-homepage: https://gitlab.gnome.org/schmid-j/flare
+homepage: https://mobile.schmidhuberj.de/flare
 default: flatpak
 backends:
+  brew:
+    summary: Homebrew source build with pinned vendored Rust dependencies
+    formula: Brandon-Gottshall/linux-formulas/flare
+    cons:
+    - Compiles GTK dependencies and Rust code on first install
   flatpak:
     summary: Official Flathub Flatpak package (recommended)
     pros:
