@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# scripts/doctor: Verify health of linux-formulas tap and desktop integrations
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+pass() { printf "${GREEN}✔${NC} %s\n" "$1"; }
+warn() { printf "${YELLOW}⚠${NC} %s\n" "$1"; }
+fail() { printf "${RED}✖${NC} %s\n" "$1"; }
+info() { printf "${BLUE}ℹ${NC} %s\n" "$1"; }
+
+printf "========================================\n"
+printf "        Linux Formulas Tap Doctor          \n"
+printf "========================================\n\n"
+
+errors=0
+warnings=0
+
+# 1. Check Homebrew
+info "Checking Homebrew installation..."
+if command -v brew >/dev/null 2>&1; then
+  brew_prefix="$(brew --prefix)"
+  pass "Homebrew is available at: $brew_prefix"
+else
+  fail "Homebrew ('brew') is not found on PATH"
+  errors=$((errors + 1))
+  exit 1
+fi
+
+# 2. Check XDG_DATA_DIRS
+info "Checking session XDG_DATA_DIRS..."
+brew_share="$brew_prefix/share"
+current_xdg="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+if [[ ":$current_xdg:" == *":$brew_share:"* ]]; then
+  pass "Homebrew share ($brew_share) is active in XDG_DATA_DIRS"
+else
+  warn "Homebrew share ($brew_share) is NOT in current session XDG_DATA_DIRS"
+  info "  (Launchers started in this session might not index Homebrew apps until next login)"
+  warnings=$((warnings + 1))
+fi
+
+# 3. Check Bootstrap Configuration Files
+info "Checking desktop bootstrap configuration files..."
+xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+env_conf="$xdg_config_home/environment.d/60-linux-formulas-xdg-data.conf"
+plasma_sh="$xdg_config_home/plasma-workspace/env/60-linux-formulas-xdg-data.sh"
+
+if [[ -f "$env_conf" ]]; then
+  pass "Generic environment.d hook exists ($env_conf)"
+else
+  warn "Missing $env_conf (run: scripts/bootstrap-desktop)"
+  warnings=$((warnings + 1))
+fi
+
+if [[ -f "$plasma_sh" ]]; then
+  pass "KDE Plasma pre-startup hook exists ($plasma_sh)"
+else
+  warn "Missing $plasma_sh (run: scripts/bootstrap-desktop)"
+  warnings=$((warnings + 1))
+fi
+
+# 4. Check Installed Tap Formulas & Desktop Entries
+info "Checking installed applications from this tap..."
+desktop_dir="$brew_share/applications"
+
+if [[ -d "$desktop_dir" ]]; then
+  shopt -s nullglob
+  desktop_files=("$desktop_dir"/*.desktop)
+  shopt -u nullglob
+
+  if [[ ${#desktop_files[@]} -gt 0 ]]; then
+    for df in "${desktop_files[@]}"; do
+      df_name="$(basename "$df")"
+      if command -v desktop-file-validate >/dev/null 2>&1; then
+        if desktop-file-validate "$df" >/dev/null 2>&1; then
+          pass "Desktop entry valid: $df_name"
+        else
+          fail "Desktop entry validation failed: $df_name"
+          errors=$((errors + 1))
+        fi
+      else
+        info "Desktop file found: $df_name (desktop-file-validate not installed)"
+      fi
+
+      # Check TryExec
+      try_exec="$(grep -E '^TryExec=' "$df" | cut -d= -f2- || true)"
+      if [[ -n "$try_exec" ]]; then
+        if [[ -x "$try_exec" ]]; then
+          pass "  Executable ($try_exec) exists and is executable"
+        else
+          fail "  TryExec binary ($try_exec) missing or not executable"
+          errors=$((errors + 1))
+        fi
+      fi
+
+      # Check Icon
+      icon_name="$(grep -E '^Icon=' "$df" | cut -d= -f2- || true)"
+      if [[ -n "$icon_name" ]]; then
+        icon_found=0
+        for icon_path in "$brew_share/icons/hicolor"/*/*/"$icon_name".*; do
+          if [[ -f "$icon_path" ]]; then
+            icon_found=1
+            pass "  Icon resolved: $icon_path"
+            break
+          fi
+        done
+        if [[ $icon_found -eq 0 ]]; then
+          warn "  Icon '$icon_name' not found in $brew_share/icons/hicolor"
+          warnings=$((warnings + 1))
+        fi
+      fi
+    done
+  else
+    info "No .desktop files found in $desktop_dir"
+  fi
+else
+  info "No applications directory at $desktop_dir"
+fi
+
+printf "\n========================================\n"
+if [[ $errors -eq 0 && $warnings -eq 0 ]]; then
+  printf "${GREEN}All checks passed! Linux Formulas tap is in optimal health.${NC}\n"
+elif [[ $errors -eq 0 ]]; then
+  printf "${YELLOW}Doctor passed with %d warning(s). Run 'scripts/bootstrap-desktop' if needed.${NC}\n" "$warnings"
+else
+  printf "${RED}Doctor found %d error(s) and %d warning(s). Please review the output above.${NC}\n" "$errors" "$warnings"
+fi
+printf "========================================\n"
+exit $errors

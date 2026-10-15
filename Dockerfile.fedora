@@ -1,0 +1,9 @@
+FROM fedora:44
+RUN dnf install -y git curl file sudo procps-ng diffutils gcc make jq gcc-c++ patch \
+    ruby ruby-devel dnf-plugins-core
+RUN useradd -m -s /bin/bash linuxbrew && \
+    echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+USER linuxbrew
+WORKDIR /home/linuxbrew
+RUN NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"

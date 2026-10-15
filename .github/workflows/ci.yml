@@ -10,19 +10,74 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@main
-      - name: Test tooling
+      - name: Test portable tooling
         run: |
           python3 -m unittest discover -s test -p 'test_*.py'
+          brew ruby -- test/test_backends.rb
+          brew ruby -- test/test_state_migration.rb
+          for test_file in test/test_*.js; do node "$test_file"; done
+          brew ruby -- -e 'ARGV.each { |path| RubyVM::InstructionSequence.compile_file(path); puts "Syntax OK: #{path}" }' Formula/*.rb Casks/*.rb lib/linux_formulas/*.rb lib/linux_formulas/backends/*.rb
+      - name: Test Linux tooling
+        if: runner.os == 'Linux'
+        run: |
           bash test/test_desktop_bootstrap.sh
           bash test/test_formula.sh
           bash test/test_migration.sh
-          brew ruby -- -c Formula/antigravity.rb
-          bash -n scripts/bootstrap-desktop scripts/migrate-antigravity-v1-fedora
+          bash test/test_doctor.sh
+          bash test/test_app_manager.sh
+          brew ruby -- test/test_brew_commands.rb
+          bash test/test_jump_desktop.sh
+          bash test/test_shadow_pc.sh
+          bash test/test_claude_desktop.sh
+          bash test/test_new_formulas.sh
+          bash -n scripts/bootstrap-desktop scripts/migrate-antigravity-v1-fedora scripts/migrate-shadow-pc scripts/doctor scripts/brew-app
       - name: Audit formula
+        if: runner.os == 'Linux'
         run: |
-          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
-          brew audit --strict Brandon-Gottshall/fedora-brew/antigravity
+          brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew trust --tap Brandon-Gottshall/linux-formulas
+          brew audit --strict Brandon-Gottshall/linux-formulas/antigravity
+          brew audit --strict Brandon-Gottshall/linux-formulas/claude-desktop
+          brew audit --strict Brandon-Gottshall/linux-formulas/flare
+          brew audit --strict Brandon-Gottshall/linux-formulas/vicinae
+          brew audit --strict Brandon-Gottshall/linux-formulas/shadow-pc
+          brew audit --strict Brandon-Gottshall/linux-formulas/toshy-runtime
+          brew audit --cask --strict Brandon-Gottshall/linux-formulas/toshy
+          bash test/test_jump_desktop_resolution.sh
+      - name: Build and test Toshy runtime
+        if: runner.os == 'Linux'
+        run: |
+          brew install --build-from-source Brandon-Gottshall/linux-formulas/toshy-runtime
+          brew test Brandon-Gottshall/linux-formulas/toshy-runtime
+
+  cachyos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CachyOS Homebrew environment
+        run: docker build -f Dockerfile.cachyos -t linux-formulas-cachyos .
+      - name: Validate CachyOS packages and desktop integration
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/workspace:ro" linux-formulas-cachyos bash -c '
+            set -euo pipefail
+            git -c safe.directory=/workspace -c safe.directory=/workspace/.git clone /workspace /home/linuxbrew/linux-formulas
+            cd /home/linuxbrew/linux-formulas
+            brew tap --custom-remote Brandon-Gottshall/linux-formulas "$PWD"
+            brew trust --tap Brandon-Gottshall/linux-formulas
+            bash test/test_app_manager.sh
+            bash test/test_desktop_bootstrap.sh
+            for formula in claude-desktop vicinae flare; do
+              brew install --build-from-source "Brandon-Gottshall/linux-formulas/$formula"
+              brew test "Brandon-Gottshall/linux-formulas/$formula"
+            done
+            scripts/bootstrap-desktop
+          '

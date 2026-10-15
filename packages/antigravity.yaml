@@ -1,0 +1,40 @@
+name: antigravity
+display_name: Google Antigravity
+description: Standalone command center for Google Antigravity agents
+homepage: https://antigravity.google/product/antigravity-2
+default: flatpak
+backends:
+  flatpak:
+    summary: Sandboxed Flatpak package
+    pros:
+    - Sandboxed isolation from host filesystem
+    - Same consistent runtime across all Linux distributions
+    cons:
+    - Larger initial download due to runtime dependencies
+    remote: flathub
+    app_id: com.google.Antigravity
+  brew:
+    summary: Homebrew Cellar Standalone formula (Tarball payload)
+    pros:
+    - Installs entirely in user space without sudo
+    - Pinned SHA-256 immutable download with strict lifecycle tracking
+    - Integrated with linux-formulas update automation
+    cons:
+    - Links against host system GUI libraries
+    formula: Brandon-Gottshall/linux-formulas/antigravity
+distros:
+  fedora:
+    default: rpm
+    backends:
+      rpm:
+        summary: Native Fedora RPM package (via official repository)
+        pros:
+        - Native desktop menu and system notification integration
+        - Automatic updates managed through system dnf
+        cons:
+        - Requires sudo privileges to add repository and install
+        repo:
+          name: antigravity-rpm
+          baseurl: https://us-central1-yum.pkg.dev/projects/antigravity-hub/antigravity-rpm
+          gpgcheck: 0
+        package: antigravity

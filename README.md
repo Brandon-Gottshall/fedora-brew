@@ -1,151 +1,276 @@
-# Fedora Brew
+# Linux Formulas
 
-Fedora Brew is a personal Homebrew tap that adapts heterogeneous, self-contained Linux application artifacts into one consistent lifecycle:
-
-```bash
-brew install <app>
-brew upgrade <app>
-brew uninstall <app>
-```
-
-Use a native system package manager when upstream provides a good native package. Use this tap when an upstream Linux application does not provide an acceptable package-management lifecycle.
-
-The repository is named for its first host environment, but its packaging conventions are not Fedora-specific. Future formulas may adapt AppImages, archives, standalone binaries, vendor downloads, `.deb` payloads, or source builds without changing the repository structure. No generalized package DSL is planned.
-
-**Google Antigravity 2.x is currently the only supported and reference package.**
-
-## Ownership policy
-
-- DNF-managed packages remain owned by DNF.
-- Flatpak applications remain owned by Flatpak.
-- Applications admitted to this tap have their self-contained payload owned by Homebrew.
-
-Formulas must not invoke `sudo dnf install`, `flatpak install`, or another package manager and then claim ownership. Normal uninstall removes package-owned files only; projects, credentials, preferences, caches, and other user data are preserved.
-
-## Bootstrap
-
-Homebrew links formula assets under its own prefix. Linux desktops do not search that prefix by default, so configure it once:
+Linux Formulas is a personal Homebrew tap and **Linux Application Catalog & Resolver** that bridges heterogeneous Linux application distributions (**RPM/DNF**, **pacman/AUR**, **Flatpak**, and **Homebrew**) behind a clean, unified command:
 
 ```bash
-git clone https://github.com/Brandon-Gottshall/fedora-brew.git
-cd fedora-brew
-scripts/bootstrap-desktop
-brew tap Brandon-Gottshall/fedora-brew https://github.com/Brandon-Gottshall/fedora-brew
+brew app install <app>
+brew app upgrade <app>
+brew app uninstall <app>
 ```
 
-The bootstrap adds Homebrew's `share` directory to `XDG_DATA_DIRS`, refreshes desktop caches, and installs a Plasma pre-startup hook in `~/.config/plasma-workspace/env/`. Plasma sources that documented hook before autostart applications such as Vicinae, so every current and future formula is discoverable without application-specific links. The generic `environment.d` configuration remains as a fallback for other Linux desktops.
+*(You can also use the traditional `brew install <formula>` for standalone formula builds, or use `brew linux` as an alias).*
 
-The bootstrap never restarts Plasma or launcher services. Already-running launchers must be fully quit and reopened once after the first bootstrap; future logins inherit the configuration automatically. The integration can be reversed with `scripts/bootstrap-desktop --remove`.
+Current Homebrew-managed Linux applications include Claude Desktop, Google Antigravity,
+Shadow PC, and Toshy. Toshy uses a separate checksummed runtime formula plus a cask that owns
+only its user-level launchers and services.
 
-## Antigravity 2.x
+---
 
-### Product boundary
+## 🌟 Linux App Catalog & Backend Resolver (`brew app`)
 
-Google Antigravity 2.0 is a standalone desktop agent command center. It is separate from the older Antigravity IDE.
-
-The official general download page currently publishes:
-
-- version: `2.8.1`
-- build: `6512087774658560`
-- architecture: Linux x86_64
-- artifact: `Antigravity.tar.gz`
-- SHA-256: `23f6c3bfef2b3326f8b747cd9e15ba3401c702280436e4e03b9a863c6678eff3`
-
-The legacy Linux page still links version `1.23.2` and an RPM repository configured with `gpgcheck=0`. Neither is used by this formula. Version 1.x artifacts are rejected by update tooling.
-
-Google does not publish a checksum alongside the 2.x tarball. The formula therefore pins a SHA-256 calculated from Google's immutable HTTPS object. The trust boundary is Google Storage plus review of an automated update pull request.
-
-Sources:
-
-- [Antigravity 2.0 download page](https://antigravity.google/download)
-- [Antigravity 2.0 documentation](https://antigravity.google/docs/getting-started)
-- [Antigravity changelog](https://antigravity.google/changelog)
-- [Antigravity 2.0 announcement](https://antigravity.google/blog/introducing-google-antigravity-2)
-- [Legacy Linux page, documented for exclusion](https://antigravity.google/download/linux)
-
-### Migrate from legacy Fedora RPM
-
-Inspect first; dry-run is the default:
+Rather than forcing one fixed backend, `brew app` presents an interactive selection layer when multiple distribution methods exist:
 
 ```bash
-scripts/migrate-antigravity-v1-fedora
+$ brew app install antigravity
+
+Google Antigravity has multiple Linux backends available:
+
+  1) RPM (recommended/default)
+     Summary: Native Fedora RPM package (via official repository)
+     • [Pro] Native desktop menu and system notification integration
+     • [Pro] Automatic updates managed through system dnf
+     • [Con] Requires sudo privileges to add repository and install
+
+  2) FLATPAK
+     Summary: Sandboxed Flatpak package
+     • [Pro] Sandboxed isolation from host filesystem
+     • [Pro] Same consistent runtime across all Linux distributions
+     • [Con] Larger initial download due to runtime dependencies
+
+  3) BREW
+     Summary: Homebrew Cellar Standalone formula (Tarball payload)
+     • [Pro] Installs entirely in user space without sudo
+     • [Pro] Pinned SHA-256 immutable download with strict lifecycle tracking
+     • [Pro] Integrated with linux-formulas update automation
+     • [Con] Links against host system GUI libraries
+
+Choose installation method [1-3] (default: 1):
 ```
 
-Apply only the reported legacy removal:
+### Non-Interactive & Scripting Flags:
+```bash
+# Force native RPM / DNF backend
+brew app install antigravity --rpm
+
+# Force Flatpak backend
+brew app install antigravity --flatpak
+
+# Force Homebrew Cellar formula
+brew app install antigravity --brew
+
+# Set global preference
+brew app config default_backend flatpak
+```
+
+See **[docs/APP_CATALOG.md](docs/APP_CATALOG.md)** for full documentation.
+
+---
+
+## Documentation & Contributor Guides
+
+* **[Linux App Catalog & Resolver Guide](docs/APP_CATALOG.md)**: How `brew app` manages backends and manifest definitions.
+* **[Package Admission & Ownership Policy](docs/ADMISSION_POLICY.md)**: Rules on when to package an app here vs DNF/Flatpak.
+* **[Step-by-Step SOP for Adding Packages](docs/ADDING_A_PACKAGE.md)**: Complete playbook for researching, authoring, and testing new packages.
+* **[Formula Patterns & Archetypes](docs/FORMULA_PATTERNS.md)**: Tested formula templates for Electron apps, AppImages, Debian (`.deb`) extractions, and standalone binaries.
+* **[Desktop Integration Architecture](docs/DESKTOP_INTEGRATION.md)**: Deep dive into XDG discovery, KDE Plasma pre-startup hooks, and launcher indexing (Vicinae, KRunner, App Menu).
+* **[Update Automation Guide](docs/UPDATE_AUTOMATION.md)**: Release scrapers, checksum pinning, and GitHub Actions PR workflows.
+* **[Cross-Platform Setup & Brewfile Guide](docs/CROSS_PLATFORM_SETUP.md)**: 3-layer machine bootstrap architecture across Fedora and macOS.
+* **[Case Study: Google Antigravity 2.x](docs/CASE_STUDY_ANTIGRAVITY.md)**: Comprehensive technical retrospective on adding Antigravity 2.x.
+* **[Contributing Guidelines](CONTRIBUTING.md)**: PR checklist and testing instructions.
+
+---
+
+## Ownership Policy
+
+* **DNF-managed packages** remain owned exclusively by DNF.
+* **Flatpak applications** remain owned exclusively by Flatpak.
+* **Linux Formulas applications** have their self-contained payload owned exclusively by Homebrew.
+
+Formulas must never invoke `sudo dnf install`, `flatpak install`, or other external package managers. Uninstalling removes package-owned files only; user data, settings, credentials, and projects are always preserved.
+
+---
+
+## Quickstart & Desktop Bootstrap
+
+Homebrew links formula assets under its own prefix. Linux desktop environments do not search that prefix by default, so configure it once:
 
 ```bash
-scripts/migrate-antigravity-v1-fedora --apply
+# 1. Attach tap
+brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/fedora-brew
+
+# 2. Trust tap commands
+brew trust --tap Brandon-Gottshall/linux-formulas
+
+# 3. Run desktop bootstrap once
+"$(brew --prefix)/Homebrew/Library/Taps/brandon-gottshall/homebrew-linux-formulas/scripts/bootstrap-desktop"
+
+# 4. Verify system health
+"$(brew --prefix)/Homebrew/Library/Taps/brandon-gottshall/homebrew-linux-formulas/scripts/doctor"
 ```
 
-The script:
+The bootstrap script adds Homebrew's `share` directory to `XDG_DATA_DIRS`, refreshes desktop caches, and configures a Plasma pre-startup hook in `~/.config/plasma-workspace/env/`.
 
-1. queries the exact RPM package named `antigravity`;
-2. reports the RPM owning any current `antigravity` command;
-3. matches only the `[antigravity-rpm]` repository or the exact legacy Google Artifact Registry URL;
-4. reports but preserves unrelated Google repositories;
-5. removes the exact legacy package and dedicated repository;
-6. refreshes DNF metadata; and
-7. verifies that RPM/DNF ownership and the repository relationship are gone.
+---
 
-It fails closed when command ownership is ambiguous.
+## Reference Package: Google Antigravity 2.x
 
-### Install and use
+### Product Boundary
+Google Antigravity 2.0 is a standalone desktop agent command center, separate from the legacy 1.x IDE / RPM channel. The formula pins immutable Google Cloud Storage tarballs and calculates verifiable SHA-256 hashes.
 
+### Installation
 ```bash
-brew install Brandon-Gottshall/fedora-brew/antigravity
-brew test Brandon-Gottshall/fedora-brew/antigravity
+brew install Brandon-Gottshall/linux-formulas/antigravity
+brew test Brandon-Gottshall/linux-formulas/antigravity
 ```
 
-After bootstrap, Google Antigravity appears in KDE Application Launcher and KRunner. The desktop entry uses stable Homebrew `opt` paths, so upgrades do not leave versioned Cellar paths or duplicate launchers.
-
-Normal lifecycle:
-
+### Normal Lifecycle
 ```bash
 brew upgrade antigravity
 brew uninstall antigravity
 ```
 
-The formula disables Antigravity's built-in updater so Homebrew remains the only application lifecycle owner.
+## Claude Desktop
 
-## Updating
-
-The formula has Homebrew `livecheck` metadata. `scripts/update-formula.py` independently enforces the 2.x product boundary:
+Install Anthropic's official Claude Desktop Linux beta on Fedora through the tap:
 
 ```bash
-scripts/update-formula.py --check
-scripts/update-formula.py
+brew app install claude-desktop --brew
+brew upgrade claude-desktop
 ```
 
-It requires exactly one official `antigravity-hub/<2.x-version>-<build>/linux-x64/Antigravity.tar.gz` URL. It refuses legacy, malformed, or ambiguous pages. When a new version is found, it downloads the immutable object, calculates SHA-256, and changes only the formula URL, version, and checksum.
+The formula extracts Anthropic's checksummed Debian payload without running its
+APT maintainer scripts, leaving Homebrew as the sole update owner. Fedora is not
+currently an upstream-supported distribution.
 
-The scheduled GitHub Action runs this process and opens or updates a pull request after tests and audit; it never commits an unvalidated release directly to `main`.
+## Jump Desktop: experimental Linux wrapper
 
-## Formula conventions
+**WARNING: The Linux `jump-desktop` formula is an unsupported, third-party
+Electron web wrapper. It is not the official Jump Desktop application or a
+native Linux RDP, VNC, or Fluid client. Do not rely on it for critical remote
+access.** Features and authentication depend on the hosted Jump Desktop web
+client and can break without notice. Keyboard and gesture forwarding is best
+effort; desktop shortcuts can still interfere. The wrapper can modify user KWin
+rules to capture shortcuts, and its external sign-in flow can import browser
+session credentials. Treat the wrapper and its local profile as sensitive.
 
-Future formulas should:
+The wrapper pins its Electron runtime; it does not receive automatic Electron
+security updates. Review runtime updates before using it with sensitive accounts.
+Session cookies and settings remain in `~/.config/jump-desktop/` after uninstall.
 
-1. use an official immutable HTTPS artifact and a pinned checksum;
-2. restrict untested operating systems and architectures explicitly;
-3. validate expected payload shape before installation;
-4. install the complete self-contained payload in the Cellar;
-5. expose launchers through stable `opt` paths;
-6. install desktop entries and icons below `share/`;
-7. disable upstream self-update when Homebrew owns upgrades;
-8. keep user state outside package cleanup; and
-9. provide strict, testable release discovery before adding automation.
+Use an explicit formula selection on Linux, because Homebrew's official macOS
+cask also uses the `jump-desktop` token:
 
-## Validation
+```bash
+brew install --formula Brandon-Gottshall/linux-formulas/jump-desktop
+# Or use the catalog's explicit formula backend:
+brew app install jump-desktop --brew
+```
 
-Repository checks:
+The tap's official macOS application cask is now `jump-desktop-mac`:
+
+```bash
+brew install --cask Brandon-Gottshall/linux-formulas/jump-desktop-mac
+```
+
+`cask_renames.json` maps this tap's previous `jump-desktop` cask token to
+`jump-desktop-mac` for Homebrew migration. The Linux formula keeps its name.
+No cross-tap migration is needed for this cask rename.
+
+## Shadow PC and Toshy
+
+Install Shadow PC directly or through the catalog:
+
+```bash
+brew install Brandon-Gottshall/linux-formulas/shadow-pc
+brew app install shadow-pc --brew
+```
+
+Before moving an existing loose AppImage, verify the migration without writes:
+
+```bash
+scripts/migrate-shadow-pc --dry-run --source "$HOME/Downloads/ShadowPC.appimage"
+```
+
+Toshy requires the runtime formula and cask. Existing installations must pass the
+non-writing component, input-access, runtime, backup, and service-manager checks:
+
+```bash
+brew install Brandon-Gottshall/linux-formulas/toshy-runtime
+toshy-brew-sync migrate
+brew install --cask Brandon-Gottshall/linux-formulas/toshy
+toshy-brew-doctor
+```
+
+`migrate` is always a dry run. The cask performs the real integration only after
+the same preflight succeeds. Normal uninstall preserves Toshy configuration and
+rollback snapshots; `brew uninstall --zap --cask toshy` is the explicit cleanup.
+
+---
+
+## Validation Suite
+
+Run repository tests before submitting contributions:
 
 ```bash
 python3 -m unittest discover -s test -p 'test_*.py'
 bash test/test_desktop_bootstrap.sh
 bash test/test_formula.sh
 bash test/test_migration.sh
+bash test/test_doctor.sh
+bash test/test_app_manager.sh
+bash test/test_shadow_pc.sh
+bash test/test_claude_desktop.sh
 brew ruby -- -c Formula/antigravity.rb
-bash -n scripts/bootstrap-desktop scripts/migrate-antigravity-v1-fedora
-brew audit --strict Brandon-Gottshall/fedora-brew/antigravity
+brew ruby -- -c Formula/claude-desktop.rb
+brew ruby -- -c Formula/shadow-pc.rb
+brew ruby -- -c Formula/toshy-runtime.rb
+brew ruby -- -c Casks/toshy.rb
+bash -n scripts/bootstrap-desktop scripts/migrate-antigravity-v1-fedora scripts/migrate-shadow-pc scripts/doctor scripts/brew-app
+brew audit --strict Brandon-Gottshall/linux-formulas/antigravity
+brew audit --strict Brandon-Gottshall/linux-formulas/claude-desktop
+brew audit --strict Brandon-Gottshall/linux-formulas/shadow-pc
+brew audit --strict Brandon-Gottshall/linux-formulas/toshy-runtime
+brew audit --cask --strict Brandon-Gottshall/linux-formulas/toshy
 ```
 
-Lifecycle validation additionally checks install, `brew test`, command resolution, desktop-file validity, stable `Exec=`, uninstall, reinstall, and legacy DNF absence.
+## Migrating from fedora-brew
+
+The tap identity is now `Brandon-Gottshall/linux-formulas`. Until the GitHub
+repository itself is renamed, use the existing repository URL explicitly:
+
+```bash
+brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/fedora-brew
+brew trust --tap Brandon-Gottshall/linux-formulas
+```
+
+After the repository rename, use
+`brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/linux-formulas`.
+Keep the explicit URL: Homebrew otherwise assumes the repository is named
+`homebrew-linux-formulas`. Update Brewfiles and scripts to the new tap identity.
+Keep the old tap until packages installed from it have been moved. For each
+installed formula, reinstall using the new fully qualified name, verify it,
+then remove the old tap once no installed packages depend on it. Back up
+application data before any reinstall. Avoid force-untapping installed packages.
+
+The app manager copies `config.json` and `installed.json` from
+`~/.config/fedora-brew` into `~/.config/linux-formulas` on first use, only if
+the new directory does not exist. The original files are preserved. Toshy integration receipts are also copied once
+from the old state directory, and desktop bootstrap retires legacy hooks only
+when their exact managed marker matches. An existing
+new directory is never overwritten. `XDG_CONFIG_HOME` is honored.
+`LINUX_FORMULAS_CONFIG_DIR` and `HOMEBREW_LINUX_FORMULAS_CONFIG_DIR` are the new
+path overrides; the old `FEDORA_BREW_CONFIG_DIR` and
+`HOMEBREW_FEDORA_BREW_CONFIG_DIR` remain supported with lower priority.
+
+The old macOS cask token maps to `jump-desktop-mac` through
+`cask_renames.json`; the Linux formula remains `jump-desktop`. Use the explicit
+formula command above to avoid Homebrew's official macOS cask collision.
+
+On Arch/CachyOS, `--native` selects pacman. AUR installs use an existing `paru`
+or `yay`, or a pacman-compatible executable selected with
+`LINUX_FORMULAS_AUR_HELPER` / `brew app config aur_helper /path/to/helper`.
+The manager does not install an AUR helper. Native Arch installs run a full
+synchronized upgrade (`-Syu`) to avoid unsupported partial upgrades.
+
+Fedora container validation is deferred to a separate PR. The CI additions here
+cover portable tooling on Ubuntu/macOS and package installation on CachyOS.
