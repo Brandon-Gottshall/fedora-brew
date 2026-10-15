@@ -54,7 +54,7 @@ class UpdateClaudeDesktopTests(unittest.TestCase):
             formula = Path(temporary) / "claude-desktop.rb"
             formula.write_text(
                 '  url "https://example.invalid/old.deb"\n'
-                '  version "1.0.0"\n'
+                '  version "1.0.0"\n  revision 1\n'
                 f'  sha256 "{"0" * 64}"\n'
             )
             self.assertTrue(MODULE.update_formula(formula, release))
@@ -62,6 +62,10 @@ class UpdateClaudeDesktopTests(unittest.TestCase):
             self.assertIn(f'url "{release.url}"', updated)
             self.assertIn('version "2.3.4"', updated)
             self.assertIn(f'sha256 "{release.digest}"', updated)
+            self.assertNotIn('revision ', updated)
+            formula.write_text(updated + '  revision 1\n')
+            self.assertFalse(MODULE.update_formula(formula, release))
+            self.assertIn('revision 1', formula.read_text())
 
 
 if __name__ == "__main__":

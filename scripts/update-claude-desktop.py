@@ -98,6 +98,9 @@ def update_formula(path: Path, release: Release) -> bool:
     )
     if (url_count, version_count, hash_count) != (1, 1, 1):
         raise ValueError("formula shape changed; refusing partial update")
+    previous_version = re.search(r'^  version "([^"\n]+)"', original, re.MULTILINE)
+    if previous_version and previous_version.group(1) != release.version:
+        updated = re.sub(r'^  revision \d+\n', '', updated, flags=re.MULTILINE)
     if updated == original:
         return False
     path.write_text(updated)
