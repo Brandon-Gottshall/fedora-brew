@@ -25,6 +25,7 @@ jobs:
           bash test/test_migration.sh
           brew ruby -- -c Formula/antigravity.rb
           brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew trust --tap Brandon-Gottshall/linux-formulas
           brew audit --strict Brandon-Gottshall/linux-formulas/antigravity
       - name: Open update pull request
         uses: peter-evans/create-pull-request@v7

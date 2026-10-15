@@ -49,6 +49,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew trust --tap Brandon-Gottshall/linux-formulas
           brew audit --strict Brandon-Gottshall/linux-formulas/antigravity
           brew audit --strict Brandon-Gottshall/linux-formulas/claude-desktop
           brew audit --strict Brandon-Gottshall/linux-formulas/shadow-pc
@@ -75,6 +76,7 @@ jobs:
             git -c safe.directory=/workspace clone /workspace /home/linuxbrew/linux-formulas
             cd /home/linuxbrew/linux-formulas
             brew tap --custom-remote Brandon-Gottshall/linux-formulas "$PWD"
+            brew trust --tap Brandon-Gottshall/linux-formulas
             bash test/test_app_manager.sh
             bash test/test_desktop_bootstrap.sh
             for formula in claude-desktop vicinae flare; do

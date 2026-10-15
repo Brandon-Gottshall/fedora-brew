@@ -23,6 +23,7 @@ jobs:
           bash test/test_claude_desktop.sh
           brew ruby -- -c Formula/claude-desktop.rb
           brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew trust --tap Brandon-Gottshall/linux-formulas
           brew audit --strict Brandon-Gottshall/linux-formulas/claude-desktop
           brew install --build-from-source Brandon-Gottshall/linux-formulas/claude-desktop
           brew test Brandon-Gottshall/linux-formulas/claude-desktop

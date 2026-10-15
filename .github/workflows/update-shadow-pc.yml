@@ -23,6 +23,7 @@ jobs:
           bash test/test_shadow_pc.sh
           brew ruby -- -c Formula/shadow-pc.rb
           brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew trust --tap Brandon-Gottshall/linux-formulas
           brew audit --strict Brandon-Gottshall/linux-formulas/shadow-pc
           brew install --build-from-source Brandon-Gottshall/linux-formulas/shadow-pc
           brew test Brandon-Gottshall/linux-formulas/shadow-pc

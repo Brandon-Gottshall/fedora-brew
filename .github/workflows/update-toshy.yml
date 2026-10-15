@@ -24,6 +24,7 @@ jobs:
           brew ruby -- -c Formula/toshy-runtime.rb
           brew ruby -- -c Casks/toshy.rb
           brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew trust --tap Brandon-Gottshall/linux-formulas
           brew audit --strict Brandon-Gottshall/linux-formulas/toshy-runtime
           brew audit --cask --strict Brandon-Gottshall/linux-formulas/toshy
           brew install --build-from-source Brandon-Gottshall/linux-formulas/toshy-runtime
