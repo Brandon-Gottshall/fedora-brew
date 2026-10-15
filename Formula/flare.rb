@@ -31,6 +31,7 @@ class Flare < Formula
 
   def post_install
     system Formula["glib"].opt_bin/"glib-compile-schemas", share/"glib-2.0/schemas"
+    system Formula["glib"].opt_bin/"glib-compile-schemas", HOMEBREW_PREFIX/"share/glib-2.0/schemas"
     system Formula["gtk4"].opt_bin/"gtk4-update-icon-cache", "-f", "-t", share/"icons/hicolor"
   end
 
