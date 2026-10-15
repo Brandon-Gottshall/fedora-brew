@@ -24,7 +24,11 @@ class ToshyUpdaterTests(unittest.TestCase):
         release = MODULE.Release("26.09.0", "Toshy_v26.09.0", "https://github.com/RedBearAK/toshy/archive/refs/tags/Toshy_v26.09.0.tar.gz")
         formula = '  url "https://github.com/RedBearAK/toshy/archive/refs/tags/Toshy_v26.08.0.tar.gz"\n  version "26.08.0"\n  sha256 "' + "0" * 64 + '"\n'
         cask = '  version "26.08.0"\n  sha256 "' + "0" * 64 + '"\n'
-        self.assertIn("Toshy_v26.09.0.tar.gz", MODULE.update_definition(formula, release, "a" * 64, formula=True))
+        updated = MODULE.update_definition(formula, release, "a" * 64, formula=True)
+        self.assertIn("Toshy_v26.09.0.tar.gz", updated)
+        self.assertNotIn('  version ', updated)
+        self.assertEqual(MODULE.current_pin(updated), ("26.09.0", "a" * 64))
+        self.assertEqual(MODULE.update_definition(updated, release, "b" * 64, formula=True).count('  version '), 0)
         self.assertIn('version "26.09.0"', MODULE.update_definition(cask, release, "a" * 64, formula=False))
 
     def test_detects_mismatched_pin_shape(self):

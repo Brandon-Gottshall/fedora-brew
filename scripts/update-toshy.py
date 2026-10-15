@@ -51,6 +51,8 @@ def sha256(url: str) -> str:
 
 def current_pin(text: str) -> tuple[str, str]:
     version = re.search(r'  version "([^"]+)"', text)
+    if version is None:
+        version = re.search(r'  url "https://github\.com/RedBearAK/toshy/archive/refs/tags/Toshy_v([0-9.]+)\.tar\.gz"', text)
     digest = re.search(r'  sha256 "([0-9a-f]{64})"', text)
     if version is None or digest is None:
         raise ValueError("package definition is missing its version or primary checksum")
@@ -61,6 +63,10 @@ def update_definition(text: str, release: Release, digest: str, *, formula: bool
     updated, version_count = re.subn(r'  version "[^"]+"', f'  version "{release.version}"', text, count=1)
     updated, hash_count = re.subn(r'  sha256 "[0-9a-f]{64}"', f'  sha256 "{digest}"', updated, count=1)
     if formula:
+        # Formula versions are inferred from the immutable tag URL. Retire any
+        # redundant stanza in older definitions; casks still need one.
+        updated = re.sub(r'^  version "[^"\n]+"\n', '', updated, count=1, flags=re.MULTILINE)
+        version_count = 1
         updated, url_count = re.subn(
             r'  url "https://github\.com/RedBearAK/toshy/archive/refs/tags/Toshy_v[^"/]+\.tar\.gz"',
             f'  url "{release.archive_url}"', updated, count=1,

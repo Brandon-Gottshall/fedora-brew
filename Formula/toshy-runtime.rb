@@ -4,7 +4,6 @@ class ToshyRuntime < Formula
   desc "Externally managed Python runtime for Toshy"
   homepage "https://github.com/RedBearAK/toshy"
   url "https://github.com/RedBearAK/toshy/archive/refs/tags/Toshy_v26.08.0.tar.gz"
-  version "26.08.0"
   sha256 "81de60a852b3a5abc4b610d55ccc0fe3fbad71df2156cea9d5ab01e6e793ea62"
   license "GPL-3.0-or-later"
 
