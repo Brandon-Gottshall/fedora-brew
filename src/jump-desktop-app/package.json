@@ -1,0 +1,9 @@
+{
+  "name": "jump-desktop",
+  "productName": "Jump Desktop",
+  "version": "1.0.0",
+  "description": "Jump Desktop Web Linux Wrapper with Advanced Hotkey Passthrough",
+  "main": "main.js",
+  "author": "Brandon Gottshall",
+  "license": "MIT"
+}

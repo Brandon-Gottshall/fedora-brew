@@ -1,0 +1,41 @@
+name: Update Claude Desktop
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 10 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@main
+      - name: Discover, verify, and pin release
+        run: python3 scripts/update-claude-desktop.py
+      - name: Validate
+        run: |
+          python3 -m unittest discover -s test -p 'test_*.py'
+          bash test/test_claude_desktop.sh
+          brew ruby -- -c Formula/claude-desktop.rb
+          brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
+          brew audit --strict Brandon-Gottshall/fedora-brew/claude-desktop
+          brew install --build-from-source Brandon-Gottshall/fedora-brew/claude-desktop
+          brew test Brandon-Gottshall/fedora-brew/claude-desktop
+      - name: Open update pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/update-claude-desktop
+          delete-branch: true
+          commit-message: "claude-desktop: update release"
+          title: "claude-desktop: update release"
+          body: |
+            Automated update from Anthropic's official Claude Desktop APT repository.
+
+            The workflow selects the newest amd64 package, verifies the downloaded
+            artifact against the repository SHA-256, and validates the formula
+            before opening this PR.
