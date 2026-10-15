@@ -57,7 +57,12 @@ module FedoraBrew
       end
 
       def binary_exists?(bin)
-        system("command -v #{bin} >/dev/null 2>&1")
+        return File.file?(bin) && File.executable?(bin) if bin.include?(File::SEPARATOR)
+
+        ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).any? do |directory|
+          candidate = File.join(directory, bin)
+          File.file?(candidate) && File.executable?(candidate)
+        end
       end
     end
   end

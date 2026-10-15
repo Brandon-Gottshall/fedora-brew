@@ -1,13 +1,16 @@
 # frozen_string_literal: true
 
 require "json"
+require "time"
+require_relative "platform"
 require "fileutils"
 
 module FedoraBrew
   class State
-    attr_reader :config_dir, :config_file, :state_file
+    attr_reader :config_dir, :config_file, :state_file, :platform
 
-    def initialize(config_dir: nil)
+    def initialize(config_dir: nil, platform: Platform.new)
+      @platform = platform
       base_dir = config_dir ||
                  ENV["HOMEBREW_FEDORA_BREW_CONFIG_DIR"] ||
                  ENV["FEDORA_BREW_CONFIG_DIR"] ||

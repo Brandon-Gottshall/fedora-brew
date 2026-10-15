@@ -1,27 +1,39 @@
 name: vicinae
 display_name: Vicinae
-description: Fast, extensible spotlight/raycast-like desktop application launcher for Linux
+description: Fast, extensible spotlight/raycast-like desktop application launcher
+  for Linux
 homepage: https://github.com/vicinaehq/vicinae
-
-default: rpm
-
+default: brew
 backends:
-  rpm:
-    summary: Native Fedora COPR package
-    pros:
-      - Native desktop environment integration
-      - Direct DNF updates
-    cons:
-      - Requires COPR repository enablement
-    copr: vicinaehq/vicinae
-    package: vicinae
-
   flatpak:
     summary: Flathub package
     pros:
-      - Sandboxed execution
-      - Universal Linux distribution support
+    - Sandboxed execution
+    - Universal Linux distribution support
     cons:
-      - Launcher requires desktop portal permissions for app spawning
+    - Launcher requires desktop portal permissions for app spawning
     remote: flathub
     app_id: org.vicinae.Vicinae
+  brew:
+    summary: Homebrew-managed extraction of the upstream AppImage
+    formula: Brandon-Gottshall/fedora-brew/vicinae
+distros:
+  fedora:
+    default: rpm
+    backends:
+      rpm:
+        summary: Native Fedora COPR package
+        pros:
+        - Native desktop environment integration
+        - Direct DNF updates
+        cons:
+        - Requires COPR repository enablement
+        copr: vicinaehq/vicinae
+        package: vicinae
+  arch:
+    default: brew
+    backends:
+      aur:
+        summary: Community AUR binary package (uses your preferred helper)
+        package: vicinae-bin
+        homepage: https://docs.vicinae.com/install/linux

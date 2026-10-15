@@ -6,18 +6,22 @@ require_relative "resolver"
 require_relative "backends/rpm"
 require_relative "backends/flatpak"
 require_relative "backends/brew"
+require_relative "backends/pacman"
+require_relative "backends/aur"
 
 module FedoraBrew
   class App
     attr_reader :state, :catalog, :resolver, :backends, :dry_run
 
-    def initialize(dry_run: false, packages_dir: nil, config_dir: nil)
+    def initialize(dry_run: false, packages_dir: nil, config_dir: nil, platform: Platform.new)
       @dry_run = dry_run
-      @state = State.new(config_dir: config_dir)
-      @catalog = Catalog.new(packages_dir: packages_dir)
+      @state = State.new(config_dir: config_dir, platform: platform)
+      @catalog = Catalog.new(packages_dir: packages_dir, platform: platform)
       @resolver = Resolver.new(state: @state)
       @backends = {
         "rpm" => Backends::Rpm.new(dry_run: dry_run),
+        "pacman" => Backends::Pacman.new(dry_run: dry_run),
+        "aur" => Backends::Aur.new(dry_run: dry_run, helper: @state.config["aur_helper"]),
         "flatpak" => Backends::Flatpak.new(dry_run: dry_run),
         "brew" => Backends::Brew.new(dry_run: dry_run),
       }
@@ -70,7 +74,13 @@ module FedoraBrew
           @backends.each_value { |b| b.instance_variable_set(:@dry_run, true) }
         when "-y", "--yes", "--non-interactive"
           options[:interactive] = false
-        when "--rpm", "--native", "--dnf"
+        when "--native"
+          options[:backend] = "native"
+        when "--pacman", "--aur"
+          options[:backend] = arg.delete_prefix("--")
+        when "--cask"
+          options[:backend] = "brew"
+        when "--rpm", "--dnf"
           options[:backend] = "rpm"
         when "--flatpak", "--flathub"
           options[:backend] = "flatpak"
@@ -93,7 +103,7 @@ module FedoraBrew
     def cmd_install(opts)
       name = opts[:package_name]
       unless name
-        warn "Usage: brew app install <package> [--rpm|--flatpak|--brew] [--dry-run]"
+        warn "Usage: brew app install <package> [--rpm|--pacman|--aur|--flatpak|--brew] [--dry-run]"
         exit 1
       end
 
@@ -115,7 +125,7 @@ module FedoraBrew
       success = backend.install(package.backend(backend_name), package, opts)
 
       if success
-        state.record_install(package.name, backend_name, metadata: { "display_name" => package.display_name })
+        state.record_install(package.name, backend_name, metadata: { "display_name" => package.display_name, "distro" => state.platform.family }) unless dry_run
         puts "\n✔ Successfully installed #{package.display_name} via #{backend_name.upcase}."
       else
         warn "\n✖ Installation of #{package.display_name} failed."
@@ -133,7 +143,7 @@ module FedoraBrew
         end
 
         installed_info = state.get_installed(name)
-        backend_name = opts[:backend] || installed_info&.dig("backend") || package.default_backend
+        backend_name = resolver.resolve(package, explicit_backend: opts[:backend] || installed_info&.dig("backend"), interactive: false)
         backend = backends[backend_name]
         unless backend
           warn "Error: Backend '#{backend_name}' not available for #{name}."
@@ -141,7 +151,7 @@ module FedoraBrew
         end
 
         puts "==> Upgrading #{package.display_name} via #{backend_name.upcase}..."
-        backend.upgrade(package.backend(backend_name), package, opts)
+        exit 1 unless backend.upgrade(package.backend(backend_name), package, opts)
       else
         puts "==> Upgrading all managed applications..."
         state.installed.each do |pkg_name, info|
@@ -152,7 +162,10 @@ module FedoraBrew
           b = backends[b_name]
           if b && pkg.has_backend?(b_name)
             puts "--> Upgrading #{pkg.display_name} (#{b_name})..."
-            b.upgrade(pkg.backend(b_name), pkg, opts)
+            exit 1 unless b.upgrade(pkg.backend(b_name), pkg, opts)
+          else
+            warn "Error: Recorded backend '#{b_name}' for #{pkg_name} is unavailable on this platform."
+            exit 1
           end
         end
       end
@@ -169,8 +182,10 @@ module FedoraBrew
       installed_info = state.get_installed(name)
 
       backend_name = opts[:backend] || installed_info&.dig("backend")
-      if package && backend_name.nil?
-        backend_name = package.default_backend
+      if package
+        backend_name = resolver.resolve(package, explicit_backend: backend_name, interactive: false)
+      elsif backend_name
+        backend_name = resolver.normalize_backend(backend_name)
       end
 
       unless backend_name && backends[backend_name]
@@ -182,11 +197,13 @@ module FedoraBrew
       display = package ? package.display_name : name
 
       puts "==> Uninstalling #{display} from #{backend_name.upcase} backend..."
-      success = backends[backend_name].uninstall(pkg_def, package || Package.new("name" => name), opts)
+      success = backends[backend_name].uninstall(pkg_def, package || Package.new({ "name" => name }), opts)
 
       if success
-        state.record_uninstall(name)
+        state.record_uninstall(name) unless dry_run
         puts "\n✔ Successfully uninstalled #{display}."
+      else
+        exit 1
       end
     end
 
@@ -286,7 +303,10 @@ module FedoraBrew
           brew app doctor                         Run diagnostic checks
 
         Backend Selection Options:
-          --rpm, --native         Force native RPM / DNF backend
+          --native                Use the host distro native backend
+          --rpm, --dnf            Force Fedora RPM / DNF backend
+          --pacman                Force Arch repository backend
+          --aur                   Use a configured or detected AUR helper
           --flatpak               Force Flathub Flatpak backend
           --brew, --tarball       Force Homebrew formula / tarball backend
           --backend=<name>        Specify backend explicitly

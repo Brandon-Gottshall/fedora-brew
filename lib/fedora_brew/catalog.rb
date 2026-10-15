@@ -1,18 +1,23 @@
 # frozen_string_literal: true
 
 require "yaml"
+require "date"
+require_relative "platform"
 
 module FedoraBrew
   class Package
     attr_reader :name, :display_name, :description, :homepage, :default_backend, :backends
 
-    def initialize(data)
+    def initialize(data, platform: Platform.new)
       @name = data.fetch("name")
       @display_name = data["display_name"] || @name.capitalize
       @description = data["description"] || ""
       @homepage = data["homepage"] || ""
-      @default_backend = data["default"]
-      @backends = data.fetch("backends", {})
+      section = platform.macos? ? data.fetch("macos", {}) : data.fetch("distros", {}).fetch(platform.family, {})
+      shared = platform.macos? ? {} : data.fetch("backends", {})
+      @backends = shared.merge(section.fetch("backends", {}))
+      preferred = section["default"] || data["default"]
+      @default_backend = @backends.key?(preferred) ? preferred : @backends.keys.first
     end
 
     def backend_names
@@ -31,7 +36,8 @@ module FedoraBrew
   class Catalog
     attr_reader :packages_dir
 
-    def initialize(packages_dir: nil)
+    def initialize(packages_dir: nil, platform: Platform.new)
+      @platform = platform
       @packages_dir = packages_dir || File.expand_path("../../packages", __dir__)
     end
 
@@ -56,7 +62,7 @@ module FedoraBrew
       data = YAML.safe_load(File.read(path), permitted_classes: [Date, Time])
       return nil unless data.is_a?(Hash) && data["name"]
 
-      Package.new(data)
+      Package.new(data, platform: @platform)
     rescue StandardError => e
       warn "Warning: Failed to load manifest #{path}: #{e.message}"
       nil

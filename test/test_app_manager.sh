@@ -22,16 +22,10 @@ echo "$output" | grep -Fq "claude-desktop"
 printf "==> Testing package info output...\n"
 info_output="$("$repo_root/scripts/brew-app" info antigravity)"
 echo "$info_output" | grep -Fq "Google Antigravity"
-echo "$info_output" | grep -Fq "[RPM]"
 echo "$info_output" | grep -Fq "[FLATPAK]"
 echo "$info_output" | grep -Fq "[BREW]"
 
 printf "==> Testing backend flag resolution and dry-run...\n"
-
-# 1. RPM dry run
-rpm_dry="$("$repo_root/scripts/brew-app" install antigravity --rpm --dry-run)"
-echo "$rpm_dry" | grep -Fq "sudo dnf install -y antigravity"
-echo "$rpm_dry" | grep -Fq "Successfully installed Google Antigravity via RPM"
 
 # 2. Flatpak dry run
 flatpak_dry="$("$repo_root/scripts/brew-app" install antigravity --flatpak --dry-run)"
@@ -48,22 +42,20 @@ toshy_dry="$("$repo_root/scripts/brew-app" install toshy --brew --dry-run)"
 echo "$toshy_dry" | grep -Fq "brew install --cask Brandon-Gottshall/fedora-brew/toshy"
 echo "$toshy_dry" | grep -Fq "Successfully installed Toshy via BREW"
 
-# 5. Synonym flags
-native_dry="$("$repo_root/scripts/brew-app" install flare --native --dry-run)"
-echo "$native_dry" | grep -Fq "sudo dnf install -y flare"
-
-# 6. COPR enablement check
-copr_dry="$("$repo_root/scripts/brew-app" install vicinae --rpm --dry-run)"
-echo "$copr_dry" | grep -Fq "sudo dnf copr enable -y vicinaehq/vicinae"
-
 printf "==> Testing configuration setting...\n"
 "$repo_root/scripts/brew-app" config default_backend flatpak >/dev/null
 cfg_out="$("$repo_root/scripts/brew-app" config)"
 echo "$cfg_out" | grep -Fq '"default_backend": "flatpak"'
 
 printf "==> Testing state persistence...\n"
-# State should have recorded the last dry-run install in test_config_dir
-[[ -f "$test_config_dir/installed.json" ]]
+# Previewing installs must not claim packages were actually installed.
+[[ ! -f "$test_config_dir/installed.json" ]]
 "$repo_root/scripts/brew-app" uninstall vicinae --dry-run >/dev/null
 
+printf "==> Testing platform-specific backends and schema...\n"
+if command -v ruby >/dev/null 2>&1; then
+  ruby "$repo_root/test/test_backends.rb"
+else
+  brew ruby -- "$repo_root/test/test_backends.rb"
+fi
 printf "==> All App Manager tests passed successfully!\n"

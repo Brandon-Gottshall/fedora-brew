@@ -1,48 +1,67 @@
 name: jump-desktop
 display_name: Jump Desktop
-description: High-performance remote desktop client application supporting RDP, VNC, and Fluid protocols
+description: 'Jump Desktop access: experimental Linux web wrapper, native macOS client, or standard RDP/VNC
+  alternatives'
 homepage: https://jumpdesktop.com/#jdmac
-
 default: brew
-
 backends:
   brew:
-    summary: Dedicated Linux Electron Web Wrapper with Advanced Hotkey Passthrough (recommended for Linux)
+    summary: EXPERIMENTAL, UNSUPPORTED third-party Electron web wrapper; not an official or native Jump
+      Desktop Linux client
     pros:
-      - Full keyboard passthrough (traps Ctrl+W, Ctrl+T, Alt+Tab, Super, and Esc from host interference)
-      - Three-finger trackpad swipes forward Cmd+Option+Ctrl+Shift plus the matching arrow to the remote Mac
-      - Toggleable Mac-Mode modifier remapping (Ctrl+Shift+M)
-      - Auto-hiding top control pill & persistent session profile in ~/.config/jump-desktop/
-      - Standalone desktop entry, WMClass, and system launcher integration
+    - Best-effort keyboard forwarding; host desktop shortcuts may intercept input
+    - Three-finger trackpad swipes forward Cmd+Option+Ctrl+Shift plus the matching arrow to the remote
+      Mac
+    - Toggleable Mac-Mode modifier remapping (Ctrl+Shift+M)
+    - Auto-hiding top control pill & persistent session profile in ~/.config/jump-desktop/
+    - Standalone desktop entry, WMClass, and system launcher integration
     cons:
-      - Uses Jump Desktop Web client interface over WebRTC
+    - Uses Jump Desktop Web client interface over WebRTC
+    - 'WARNING: Use at your own risk. This wrapper is not supported by Jump Desktop and may break without
+      notice.'
+    - Web client feature and authentication limitations apply; native Fluid/RDP/VNC feature parity is
+      not promised.
+    - Keyboard capture and optional KWin rule changes affect local shortcut behavior; verify an escape
+      route before use.
+    - Browser session import copies sensitive authentication material into the wrapper profile; protect
+      that profile.
     formula: Brandon-Gottshall/fedora-brew/jump-desktop
-
-  cask:
-    summary: Official macOS Cask (macOS only)
-    pros:
-      - Native macOS Cocoa/Metal application with Fluid protocol support
-      - Multi-protocol support (RDP, VNC, Fluid)
-      - Cloud synchronization and automatic connection setup
-    cons:
-      - macOS client only; Jump Desktop does not publish a native Linux client binary
-    cask: Brandon-Gottshall/fedora-brew/jump-desktop
-
   flatpak:
     summary: Alternative Linux Client (Remmina on Flathub)
     pros:
-      - Modern sandboxed client supporting standard RDP, VNC, SSH, and SPICE
-      - Full clipboard, sound, and multi-monitor redirection
+    - Modern sandboxed client supporting standard RDP, VNC, SSH, and SPICE
+    - Full clipboard, sound, and multi-monitor redirection
     cons:
-      - Standard RDP/VNC only (does not support Jump Desktop proprietary Fluid protocol)
+    - Standard RDP/VNC only (does not support Jump Desktop proprietary Fluid protocol)
     remote: flathub
     app_id: org.remmina.Remmina
-
-  rpm:
-    summary: Alternative Native Fedora Client (Remmina via DNF)
-    pros:
-      - Native desktop environment integration
-      - Direct updates managed through DNF
-    cons:
-      - Standard RDP/VNC protocols only
-    package: remmina
+distros:
+  fedora:
+    default: rpm
+    backends:
+      rpm:
+        summary: Alternative Native Fedora Client (Remmina via DNF)
+        pros:
+        - Native desktop environment integration
+        - Direct updates managed through DNF
+        cons:
+        - Standard RDP/VNC protocols only
+        package: remmina
+  arch:
+    default: brew
+    backends:
+      pacman:
+        summary: Native Arch Remmina client for standard RDP/VNC (not Fluid)
+        package: remmina
+macos:
+  default: brew
+  backends:
+    brew:
+      summary: Official macOS Cask (macOS only)
+      pros:
+      - Native macOS Cocoa/Metal application with Fluid protocol support
+      - Multi-protocol support (RDP, VNC, Fluid)
+      - Cloud synchronization and automatic connection setup
+      cons:
+      - macOS client only; Jump Desktop does not publish a native Linux client binary
+      cask: Brandon-Gottshall/fedora-brew/jump-desktop-mac

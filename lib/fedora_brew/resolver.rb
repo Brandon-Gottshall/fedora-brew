@@ -3,7 +3,6 @@
 module FedoraBrew
   class Resolver
     SYNONYMS = {
-      "native" => "rpm",
       "dnf" => "rpm",
       "tarball" => "brew",
       "cask" => "brew",
@@ -32,7 +31,7 @@ module FedoraBrew
       end
 
       # 2. Configured global preference if valid for this package
-      configured = state.config["default_backend"]
+      configured = normalize_backend(state.config["default_backend"])
       if configured && package.has_backend?(configured) && (!interactive || !tty?)
         return configured
       end
@@ -49,6 +48,8 @@ module FedoraBrew
 
     def normalize_backend(name)
       clean = name.to_s.downcase.strip.sub(/^--/, "")
+      return state.platform.native_backend || "brew" if clean == "native"
+
       SYNONYMS[clean] || clean
     end
 
@@ -113,9 +114,8 @@ module FedoraBrew
       end
 
       # Auto-detect distribution
-      if File.exist?("/etc/fedora-release") || File.exist?("/etc/redhat-release")
-        return "rpm" if package.has_backend?("rpm")
-      end
+      native = state.platform.native_backend
+      return native if native && package.has_backend?(native)
 
       if package.has_backend?("flatpak")
         return "flatpak"

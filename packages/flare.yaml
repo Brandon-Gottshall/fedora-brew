@@ -2,27 +2,28 @@ name: flare
 display_name: Flare
 description: An unofficial Signal desktop client built with GTK4 and Libadwaita
 homepage: https://gitlab.gnome.org/schmid-j/flare
-
 default: flatpak
-
 backends:
   flatpak:
     summary: Official Flathub Flatpak package (recommended)
     pros:
-      - Packaged and maintained directly on Flathub
-      - Full desktop integration with Libadwaita styling
-      - Sandboxed secret storage via Freedesktop Secret Portal
+    - Packaged and maintained directly on Flathub
+    - Full desktop integration with Libadwaita styling
+    - Sandboxed secret storage via Freedesktop Secret Portal
     cons:
-      - Requires Flatpak runtime
+    - Requires Flatpak runtime
     remote: flathub
     app_id: de.schmidhuberj.Flare
-
-  rpm:
-    summary: Fedora COPR repository package
-    pros:
-      - Native system integration
-      - Direct DNF updates
-    cons:
-      - Community COPR repository maintenance
-    copr: schmid-j/flare
-    package: flare
+distros:
+  fedora:
+    default: rpm
+    backends:
+      rpm:
+        summary: Fedora COPR repository package
+        pros:
+        - Native system integration
+        - Direct DNF updates
+        cons:
+        - Community COPR repository maintenance
+        copr: schmid-j/flare
+        package: flare

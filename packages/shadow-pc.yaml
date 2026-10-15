@@ -2,16 +2,14 @@ name: shadow-pc
 display_name: Shadow PC
 description: Cloud gaming client for Shadow PC
 homepage: https://shadow.tech/
-
 default: brew
-
 backends:
   brew:
     summary: Homebrew-managed extraction of the official Linux AppImage
     pros:
-      - Updates through ordinary Homebrew commands
-      - Installs desktop integration without root privileges
-      - Disables the bundled updater so lifecycle ownership is unambiguous
+    - Updates through ordinary Homebrew commands
+    - Installs desktop integration without root privileges
+    - Disables the bundled updater so lifecycle ownership is unambiguous
     cons:
-      - Linux x86_64 only
+    - Linux x86_64 only
     formula: Brandon-Gottshall/fedora-brew/shadow-pc
