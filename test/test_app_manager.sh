@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# test/test_app_manager.sh: Integration and unit tests for Fedora Brew App Manager
+# test/test_app_manager.sh: Integration and unit tests for Linux Formulas App Manager
 
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-test_config_dir="$(mktemp -d "/tmp/fedora-brew-test-config.XXXXXX")"
+test_config_dir="$(mktemp -d "/tmp/linux-formulas-test-config.XXXXXX")"
 trap 'rm -rf "$test_config_dir"' EXIT
 
-export HOMEBREW_FEDORA_BREW_CONFIG_DIR="$test_config_dir"
-export FEDORA_BREW_CONFIG_DIR="$test_config_dir"
+export HOMEBREW_LINUX_FORMULAS_CONFIG_DIR="$test_config_dir"
+export LINUX_FORMULAS_CONFIG_DIR="$test_config_dir"
 
 printf "==> Testing catalog listing...\n"
 output="$("$repo_root/scripts/brew-app" list)"
@@ -30,17 +30,17 @@ printf "==> Testing backend flag resolution and dry-run...\n"
 # 2. Flatpak dry run
 flatpak_dry="$("$repo_root/scripts/brew-app" install antigravity --flatpak --dry-run)"
 echo "$flatpak_dry" | grep -Fq "flatpak install -y --user flathub com.google.Antigravity"
-echo "$flatpak_dry" | grep -Fq "Successfully installed Google Antigravity via FLATPAK"
+echo "$flatpak_dry" | grep -Fq "Preview complete for Google Antigravity via FLATPAK"
 
 # 3. Brew dry run
 brew_dry="$("$repo_root/scripts/brew-app" install antigravity --brew --dry-run)"
-echo "$brew_dry" | grep -Fq "brew install Brandon-Gottshall/fedora-brew/antigravity"
-echo "$brew_dry" | grep -Fq "Successfully installed Google Antigravity via BREW"
+echo "$brew_dry" | grep -Fq "brew install Brandon-Gottshall/linux-formulas/antigravity"
+echo "$brew_dry" | grep -Fq "Preview complete for Google Antigravity via BREW"
 
 # 4. Brew cask dry run
 toshy_dry="$("$repo_root/scripts/brew-app" install toshy --brew --dry-run)"
-echo "$toshy_dry" | grep -Fq "brew install --cask Brandon-Gottshall/fedora-brew/toshy"
-echo "$toshy_dry" | grep -Fq "Successfully installed Toshy via BREW"
+echo "$toshy_dry" | grep -Fq "brew install --cask Brandon-Gottshall/linux-formulas/toshy"
+echo "$toshy_dry" | grep -Fq "Preview complete for Toshy via BREW"
 
 printf "==> Testing configuration setting...\n"
 "$repo_root/scripts/brew-app" config default_backend flatpak >/dev/null

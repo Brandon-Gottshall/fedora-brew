@@ -125,8 +125,8 @@ module LinuxFormulas
       success = backend.install(package.backend(backend_name), package, opts)
 
       if success
-        state.record_install(package.name, backend_name, metadata: { "display_name" => package.display_name, "distro" => state.platform.family }) unless dry_run
-        puts "\n✔ Successfully installed #{package.display_name} via #{backend_name.upcase}."
+        state.record_install(package.name, backend_name, metadata: { "display_name" => package.display_name, "distro" => state.platform.family, "package_definition" => package.backend(backend_name) }) unless dry_run
+        puts dry_run ? "\nPreview complete for #{package.display_name} via #{backend_name.upcase}." : "\n✔ Successfully installed #{package.display_name} via #{backend_name.upcase}."
       else
         warn "\n✖ Installation of #{package.display_name} failed."
         exit 1
@@ -142,6 +142,7 @@ module LinuxFormulas
           exit 1
         end
 
+        name = package.name
         installed_info = state.get_installed(name)
         backend_name = resolver.resolve(package, explicit_backend: opts[:backend] || installed_info&.dig("backend"), interactive: false)
         backend = backends[backend_name]
@@ -156,7 +157,10 @@ module LinuxFormulas
         puts "==> Upgrading all managed applications..."
         state.installed.each do |pkg_name, info|
           pkg = catalog.find(pkg_name)
-          next unless pkg
+          unless pkg
+            warn "Error: Manifest for managed package '#{pkg_name}' is missing; restore it before upgrading."
+            exit 1
+          end
 
           b_name = info["backend"]
           b = backends[b_name]
@@ -179,6 +183,7 @@ module LinuxFormulas
       end
 
       package = catalog.find(name)
+      name = package.name if package
       installed_info = state.get_installed(name)
 
       backend_name = opts[:backend] || installed_info&.dig("backend")
@@ -193,7 +198,11 @@ module LinuxFormulas
         exit 1
       end
 
-      pkg_def = package ? package.backend(backend_name) : { "package" => name, "app_id" => name, "formula" => name }
+      pkg_def = if package
+        package.backend(backend_name)
+      else
+        installed_info&.dig("metadata", "package_definition") || { "package" => name, "app_id" => name, "formula" => name }
+      end
       display = package ? package.display_name : name
 
       puts "==> Uninstalling #{display} from #{backend_name.upcase} backend..."
@@ -201,7 +210,7 @@ module LinuxFormulas
 
       if success
         state.record_uninstall(name) unless dry_run
-        puts "\n✔ Successfully uninstalled #{display}."
+        puts dry_run ? "\nRemoval preview complete for #{display}." : "\n✔ Successfully uninstalled #{display}."
       else
         exit 1
       end
@@ -291,7 +300,7 @@ module LinuxFormulas
 
     def cmd_help
       puts <<~HELP
-        Fedora Brew App Manager (Catalog & Multi-Backend Resolver)
+        Linux Formulas App Manager (Catalog & Multi-Backend Resolver)
 
         Usage:
           brew app install <package> [options]    Install application with backend choice

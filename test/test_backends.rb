@@ -146,6 +146,41 @@ class BackendsTest
     assert_equal "arch", app.state.get_installed("jump-desktop").dig("metadata", "distro")
   end
 
+  def test_lifecycle_uses_canonical_catalog_name
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=arch\n"))
+    app.state.record_install("jump-desktop", "pacman")
+    backend = app.backends.fetch("pacman")
+    calls = []
+    backend.define_singleton_method(:upgrade) { |*| calls << :upgrade; true }
+    backend.define_singleton_method(:uninstall) { |*| calls << :uninstall; true }
+    capture_io { app.run(%w[upgrade Jump-Desktop]) }
+    capture_io { app.run(%w[uninstall JUMP-DESKTOP]) }
+    assert_equal [:upgrade, :uninstall], calls
+    assert_empty app.state.installed
+  end
+
+  def test_removed_manifest_uses_saved_backend_package_identity
+    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=arch\n"))
+    app.state.record_install("removed-package", "aur", metadata: {"package_definition" => {"package" => "real-package-bin"}})
+    out, = capture_io { app.run(%w[uninstall removed-package]) }
+    assert_includes out, "sudo pacman -R real-package-bin"
+    refute_includes out, "sudo pacman -R removed-package"
+    capture_io { assert_raises(SystemExit) { app.run(%w[upgrade]) } }
+  end
+
+  def test_aur_upgrade_and_remove_do_not_require_same_helper
+    helper = File.join(@temp, "helper")
+    File.write(helper, "#!/bin/sh\nexit 0\n")
+    File.chmod(0755, helper)
+    backend = LinuxFormulas::Backends::Aur.new(dry_run: true, helper: helper)
+    pkg = LinuxFormulas::Package.new({"name" => "example"})
+    out, = capture_io { assert backend.upgrade({"package" => "example-bin"}, pkg, interactive: false) }
+    assert_includes out, "#{helper} -Syu --needed --noconfirm example-bin"
+    File.unlink(helper)
+    out, = capture_io { assert backend.uninstall({"package" => "example-bin"}, pkg) }
+    assert_includes out, "sudo pacman -R example-bin"
+  end
+
   def test_dry_runs_do_not_mutate_installed_state
     app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=cachyos\n"))
     capture_io { app.run(%w[install jump-desktop --pacman --yes]) }
