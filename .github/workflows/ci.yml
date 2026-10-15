@@ -46,6 +46,8 @@ jobs:
           brew trust --tap Brandon-Gottshall/linux-formulas
           brew audit --strict Brandon-Gottshall/linux-formulas/antigravity
           brew audit --strict Brandon-Gottshall/linux-formulas/claude-desktop
+          brew audit --strict Brandon-Gottshall/linux-formulas/flare
+          brew audit --strict Brandon-Gottshall/linux-formulas/vicinae
           brew audit --strict Brandon-Gottshall/linux-formulas/shadow-pc
           brew audit --strict Brandon-Gottshall/linux-formulas/toshy-runtime
           brew audit --cask --strict Brandon-Gottshall/linux-formulas/toshy
