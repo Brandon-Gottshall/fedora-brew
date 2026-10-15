@@ -69,7 +69,7 @@ jobs:
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/workspace:ro" linux-formulas-cachyos bash -c '
             set -euo pipefail
-            git -c safe.directory=/workspace clone /workspace /home/linuxbrew/linux-formulas
+            git -c safe.directory=/workspace -c safe.directory=/workspace/.git clone /workspace /home/linuxbrew/linux-formulas
             cd /home/linuxbrew/linux-formulas
             brew tap --custom-remote Brandon-Gottshall/linux-formulas "$PWD"
             brew trust --tap Brandon-Gottshall/linux-formulas
