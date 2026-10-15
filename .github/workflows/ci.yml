@@ -10,13 +10,24 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: Homebrew/actions/setup-homebrew@main
-      - name: Test tooling
+      - name: Test portable tooling
         run: |
           python3 -m unittest discover -s test -p 'test_*.py'
+          for test_file in test/test_*.js; do node "$test_file"; done
+          for source in Formula/*.rb Casks/*.rb lib/fedora_brew/*.rb lib/fedora_brew/backends/*.rb; do
+            brew ruby -- -c "$source"
+          done
+      - name: Test Linux tooling
+        if: runner.os == 'Linux'
+        run: |
           bash test/test_desktop_bootstrap.sh
           bash test/test_formula.sh
           bash test/test_migration.sh
@@ -32,6 +43,7 @@ jobs:
           brew ruby -- -c Casks/toshy.rb
           bash -n scripts/bootstrap-desktop scripts/migrate-antigravity-v1-fedora scripts/migrate-shadow-pc scripts/doctor scripts/brew-app
       - name: Audit formula
+        if: runner.os == 'Linux'
         run: |
           brew tap --custom-remote Brandon-Gottshall/fedora-brew "$GITHUB_WORKSPACE"
           brew audit --strict Brandon-Gottshall/fedora-brew/antigravity
@@ -40,6 +52,30 @@ jobs:
           brew audit --strict Brandon-Gottshall/fedora-brew/toshy-runtime
           brew audit --cask --strict Brandon-Gottshall/fedora-brew/toshy
       - name: Build and test Toshy runtime
+        if: runner.os == 'Linux'
         run: |
           brew install --build-from-source Brandon-Gottshall/fedora-brew/toshy-runtime
           brew test Brandon-Gottshall/fedora-brew/toshy-runtime
+
+  cachyos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CachyOS Homebrew environment
+        run: docker build -f Dockerfile.cachyos -t linux-formulas-cachyos .
+      - name: Validate CachyOS packages and desktop integration
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/workspace:ro" linux-formulas-cachyos bash -c '
+            set -euo pipefail
+            git -c safe.directory=/workspace clone /workspace /home/linuxbrew/linux-formulas
+            cd /home/linuxbrew/linux-formulas
+            brew tap --custom-remote Brandon-Gottshall/fedora-brew "$PWD"
+            bash test/test_app_manager.sh
+            bash test/test_desktop_bootstrap.sh
+            for formula in claude-desktop vicinae; do
+              brew install --build-from-source "Brandon-Gottshall/fedora-brew/$formula"
+              brew test "Brandon-Gottshall/fedora-brew/$formula"
+            done
+            scripts/bootstrap-desktop
+          '

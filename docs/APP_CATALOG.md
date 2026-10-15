@@ -7,7 +7,8 @@ This document explains the architecture and usage of `brew app` (aliased as `bre
 ## 1. The Core Concept: The App Store Protocol for Linux
 
 On modern Linux desktops, software distribution is fragmented across multiple formats:
-* Native RPM/DNF repositories
+* Native RPM/DNF and Arch pacman repositories
+* AUR packages through an installed helper
 * COPR repositories
 * Flatpaks (Flathub)
 * Self-contained vendor tarballs and Electron binaries (Homebrew Cellar)
@@ -40,7 +41,7 @@ Instead of forcing a single backend or trying to make Flatpak and RPM look like 
 ```
 
 * **Homebrew**: Acts as the catalog, metadata index, and resolver.
-* **DNF / Flatpak / Homebrew**: Act as the respective execution engines.
+* **DNF / pacman / AUR helper / Flatpak / Homebrew**: Act as the respective execution engines.
 
 ---
 
@@ -109,57 +110,48 @@ brew app install antigravity --flatpak --dry-run
 Every application in the catalog is defined by a simple, declarative YAML manifest in `packages/`:
 
 ```yaml
-name: antigravity
-display_name: Google Antigravity
-description: Standalone command center for Google Antigravity agents
-homepage: https://antigravity.google/product/antigravity-2
-
-default: rpm
-
+name: example
+display_name: Example
+homepage: https://example.org
+default: brew
 backends:
-  rpm:
-    summary: Native Fedora RPM package (via official repository)
-    pros:
-      - Native desktop menu and system notification integration
-      - Automatic updates managed through system dnf
-    cons:
-      - Requires sudo privileges to add repository and install
-    repo:
-      name: antigravity-rpm
-      baseurl: https://us-central1-yum.pkg.dev/projects/antigravity-hub/antigravity-rpm
-      gpgcheck: 0
-    package: antigravity
-
-  flatpak:
-    summary: Sandboxed Flatpak package
-    pros:
-      - Sandboxed isolation from host filesystem
-      - Same consistent runtime across all Linux distributions
-    cons:
-      - Larger initial download due to runtime dependencies
-    remote: flathub
-    app_id: com.google.Antigravity
-
   brew:
-    summary: Homebrew Cellar Standalone formula (Tarball payload)
-    pros:
-      - Installs entirely in user space without sudo
-      - Pinned SHA-256 immutable download with strict lifecycle tracking
-      - Integrated with fedora-brew update automation
-    cons:
-      - Links against host system GUI libraries
-    formula: Brandon-Gottshall/fedora-brew/antigravity
+    formula: Brandon-Gottshall/linux-formulas/example
+  flatpak:
+    remote: flathub
+    app_id: org.example.Example
+macos:
+  default: brew
+  backends:
+    brew:
+      cask: Brandon-Gottshall/linux-formulas/example-mac
+distros:
+  fedora:
+    default: rpm
+    backends:
+      rpm:
+        package: example
+  arch:
+    default: pacman
+    backends:
+      pacman:
+        package: example
+      aur:
+        package: example-git
 ```
 
-### Supported Backend Types:
-* **RPM**:
-  * Direct packages: `package: <pkg_name>`
-  * Dedicated repos: `repo: { name: ..., baseurl: ..., gpgcheck: ... }`
-  * COPR repositories: `copr: <user>/<project>`
-* **Flatpak**:
-  * Flathub applications: `app_id: <id>`, `remote: flathub`
-* **Homebrew**:
-  * Tap formulas: `formula: <tap>/<formula>`
+`backends` contains methods shared by Linux distributions. The matching
+`distros` section adds native methods; `macos` supplies the macOS methods.
+Linux distribution selection reads `ID` and `ID_LIKE` from `/etc/os-release`,
+so CachyOS selects the Arch family. Only backends for the current platform
+are offered, including when an explicit flag is supplied.
+
+Native RPM definitions accept `package`, optional `copr`, and optional `repo`
+metadata. Pacman and AUR definitions accept `package`; AUR uses an installed
+helper rather than installing one. Use `--pacman`, `--aur`, `--rpm`, `--flatpak`,
+or `--brew` to select explicitly. `--native` resolves to RPM on Fedora and
+pacman on Arch. Homebrew definitions use `formula` or `cask`; Linux casks such
+as Toshy stay in shared Linux backends.
 
 ---
 
