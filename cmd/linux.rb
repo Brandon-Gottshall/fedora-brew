@@ -9,14 +9,24 @@ module Homebrew
     class Linux < AbstractCommand
       cmd_args do
         usage_banner "`linux` [<subcommand>] [<package>] [<options>]"
-        description "Manage multi-backend Linux applications (RPM, Flatpak, Homebrew) - alias for `brew app`."
+        description "Manage Linux applications through RPM, pacman, AUR, Flatpak, or Homebrew."
+        switch "--dry-run", description: "Preview commands without installing or changing package state."
+        switch "-y", "--yes", description: "Run without interactive backend selection."
+        switch "--non-interactive", description: "Run without interactive backend selection."
+        %w[native pacman aur cask rpm dnf flatpak flathub brew tarball standalone].each do |backend|
+          switch "--#{backend}", description: "Select the #{backend} installation method."
+        end
+        flag "--backend=", description: "Select an installation backend by name."
+        named_args :string
+      end
+
+      def initialize(argv = ARGV.freeze)
+        @app_argv = argv.dup
+        super(argv)
       end
 
       def run
-        app = LinuxFormulas::App.new
-        args = ARGV.dup
-        args.shift if args.first == "linux"
-        app.run(args)
+        LinuxFormulas::App.new.run(@app_argv.dup)
       end
     end
   end
