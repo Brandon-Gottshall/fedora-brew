@@ -252,7 +252,9 @@ application data before any reinstall. Avoid force-untapping installed packages.
 
 The app manager copies `config.json` and `installed.json` from
 `~/.config/fedora-brew` into `~/.config/linux-formulas` on first use, only if
-the new directory does not exist. The original files are preserved. An existing
+the new directory does not exist. The original files are preserved. Toshy integration receipts are also copied once
+from the old state directory, and desktop bootstrap retires legacy hooks only
+when their exact managed marker matches. An existing
 new directory is never overwritten. `XDG_CONFIG_HOME` is honored.
 `LINUX_FORMULAS_CONFIG_DIR` and `HOMEBREW_LINUX_FORMULAS_CONFIG_DIR` are the new
 path overrides; the old `FEDORA_BREW_CONFIG_DIR` and
