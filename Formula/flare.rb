@@ -49,10 +49,10 @@ class Flare < Formula
   test do
     assert_predicate bin/"flare", :executable?
     assert_path_exists share/"applications/de.schmidhuberj.Flare.desktop"
-    assert_path_exists share/"glib-2.0/schemas/gschemas.compiled"
+    assert_path_exists HOMEBREW_PREFIX/"share/glib-2.0/schemas/gschemas.compiled"
     assert_match bin/"flare", (share/"dbus-1/services/de.schmidhuberj.Flare.service").read
     assert_match "de.schmidhuberj.Flare", shell_output(
-      "#{formula_opt_bin("glib")}/gsettings --schemadir=#{share}/glib-2.0/schemas list-schemas",
+      "#{formula_opt_bin("glib")}/gsettings --schemadir=#{HOMEBREW_PREFIX}/share/glib-2.0/schemas list-schemas",
     )
   end
 end
