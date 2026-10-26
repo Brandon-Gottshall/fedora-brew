@@ -341,6 +341,16 @@ class BackendsTest
     assert_equal [[:install, "org.example.Tool"], [:upgrade, "org.example.Tool"]], calls
   end
 
+  def test_install_with_a_backend_the_manifest_dropped_can_still_be_removed
+    os = platform("ID=cachyos\n")
+    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: os, host: fake_host(os))
+    app.state.record_install("claude-code", "brew", metadata: { "package_definition" => { "cask" => "claude-code" } })
+    out, = capture_io { app.run(%w[upgrade claude]) }
+    assert_includes out, "[dry-run] brew upgrade --cask claude-code"
+    out, = capture_io { app.run(%w[uninstall claude]) }
+    assert_includes out, "[dry-run] brew uninstall --cask claude-code"
+  end
+
   def test_upgrade_everything_runs_each_manager_once_and_continues_past_failures
     os = platform("ID=cachyos\n")
     app = LinuxFormulas::App.new(config_dir: @temp, platform: os, host: fake_host(os, aur_helper: "yay"))

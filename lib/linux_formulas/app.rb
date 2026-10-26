@@ -282,6 +282,12 @@ module LinuxFormulas
     end
 
     def upgrade_catalog(package, info, opts)
+      recorded_def = info.dig("metadata", "package_definition")
+      if !opts[:backend] && recorded_def && !package.has_backend?(info["backend"]) && backends[info["backend"]]
+        puts "==> Upgrading #{package.display_name} via #{info['backend'].upcase} (as installed)..."
+        return backends[info["backend"]].upgrade(recorded_def, package, opts)
+      end
+
       backend_name = resolver.resolve(package, explicit_backend: opts[:backend] || info["backend"], interactive: false)
       backend = backends[backend_name]
       unless backend
@@ -383,21 +389,22 @@ module LinuxFormulas
       end
 
       backend_name = opts[:backend] || installed_info&.dig("backend")
-      if package
-        backend_name = resolver.resolve(package, explicit_backend: backend_name, interactive: false)
-      elsif backend_name
-        backend_name = resolver.normalize_backend(backend_name)
-      end
+      backend_name = resolver.normalize_backend(backend_name) if backend_name
+      recorded_def = installed_info&.dig("metadata", "package_definition")
+      # The manifest may no longer offer the backend this was installed with;
+      # the definition saved at install time still identifies it.
+      use_recorded = package && installed_info && recorded_def && !package.has_backend?(backend_name)
+      backend_name = resolver.resolve(package, explicit_backend: backend_name, interactive: false) if package && !use_recorded
 
       unless backend_name && backends[backend_name]
         warn "Error: '#{name}' is not installed through any package manager brew knows about."
         exit 1
       end
 
-      pkg_def = if package
+      pkg_def = if package && !use_recorded
         package.backend(backend_name)
       else
-        installed_info&.dig("metadata", "package_definition") || { "package" => key, "app_id" => key, "formula" => key }
+        recorded_def || { "package" => key, "app_id" => key, "formula" => key }
       end
       display = package ? package.display_name : key
 
