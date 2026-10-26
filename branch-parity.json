@@ -1,0 +1,51 @@
+{
+  "branches": {
+    "import-local-work": {
+      "tap": "fedora-brew"
+    },
+    "linux-formulas/arch-support-16187652311313090728": {
+      "tap": "linux-formulas"
+    }
+  },
+  "packages": {
+    "Casks/jump-desktop-connect.rb": "full",
+    "Casks/toshy.rb": "full",
+    "Formula/antigravity.rb": "full",
+    "Formula/claude-desktop.rb": {
+      "mode": "partial",
+      "fields": [
+        "url",
+        "version",
+        "sha256"
+      ]
+    },
+    "Formula/jump-desktop.rb": {
+      "mode": "partial",
+      "fields": [
+        "url",
+        "version",
+        "sha256"
+      ]
+    },
+    "Formula/shadow-pc.rb": "full",
+    "Formula/toshy-runtime.rb": {
+      "mode": "partial",
+      "fields": [
+        "url",
+        "sha256"
+      ]
+    },
+    "branch-parity.json": {
+      "mode": "full",
+      "rewrite": false
+    },
+    "scripts/branch-parity.py": {
+      "mode": "full",
+      "rewrite": false
+    },
+    "test/test_branch_parity.py": {
+      "mode": "full",
+      "rewrite": false
+    }
+  }
+}

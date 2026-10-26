@@ -47,6 +47,17 @@ brew install --build-from-source Brandon-Gottshall/linux-formulas/<formula>
 brew test Brandon-Gottshall/linux-formulas/<formula>
 ```
 
+### Branch parity
+
+Packages shared between distro branches are listed in `branch-parity.json`. A `full` package stays identical on every branch, apart from tap-identity strings (`fedora-brew` / `linux-formulas`), which are rewritten per branch. A `partial` package shares only the listed top-level stanzas (by default `url`, `version` and `sha256`). The branch whose latest commit touched a file is treated as the source unless you pass `--from`.
+
+```bash
+scripts/branch-parity.py check                 # report drift; exits 1 if anything is out of parity
+scripts/branch-parity.py sync [--from BRANCH]  # commit fixes to the local branches
+scripts/branch-parity.py sync --push           # ...and push them to origin
+scripts/branch-parity.py suggest --write       # add newly shared packages to the config
+```
+
 ---
 
 ## 3. Pull Request Checklist
