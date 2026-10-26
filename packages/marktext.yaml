@@ -1,0 +1,15 @@
+name: marktext
+display_name: MarkText
+description: Next generation markdown editor
+homepage: https://github.com/marktext/marktext
+default: flatpak
+backends:
+  flatpak:
+    summary: Community-maintained Flathub Flatpak package
+    pros:
+    - Maintained on Flathub with regular updates
+    - Same sandboxed runtime on every Linux distribution
+    cons:
+    - Requires Flatpak runtime
+    remote: flathub
+    app_id: com.github.marktext.marktext

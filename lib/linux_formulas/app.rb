@@ -121,8 +121,15 @@ module LinuxFormulas
         exit 1
       end
 
-      puts "==> Installing #{package.display_name} using #{backend_name.upcase} backend..."
-      success = backend.install(package.backend(backend_name), package, opts)
+      # Adopt an existing install (e.g. a system-wide Flatpak) instead of
+      # installing a second copy alongside it.
+      if backend.installed?(package.backend(backend_name), package)
+        puts "==> #{package.display_name} is already installed via #{backend_name.upcase}; adopting it."
+        success = true
+      else
+        puts "==> Installing #{package.display_name} using #{backend_name.upcase} backend..."
+        success = backend.install(package.backend(backend_name), package, opts)
+      end
 
       if success
         state.record_install(package.name, backend_name, metadata: { "display_name" => package.display_name, "distro" => state.platform.family, "package_definition" => package.backend(backend_name) }) unless dry_run

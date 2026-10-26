@@ -1,0 +1,15 @@
+name: collabora-office
+display_name: Collabora Office
+description: The Collabora Office productivity suite
+homepage: https://collaboraoffice.com
+default: flatpak
+backends:
+  flatpak:
+    summary: Official Flathub Flatpak package (verified publisher)
+    pros:
+    - Published on Flathub by the upstream developer
+    - Same sandboxed runtime on every Linux distribution
+    cons:
+    - Requires Flatpak runtime
+    remote: flathub
+    app_id: com.collaboraoffice.Office

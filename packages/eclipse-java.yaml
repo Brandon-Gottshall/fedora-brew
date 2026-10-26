@@ -1,0 +1,15 @@
+name: eclipse-java
+display_name: Eclipse IDE for Java Developers
+description: Java IDE with Git, XML, Maven and Gradle tooling
+homepage: https://eclipseide.org/
+default: flatpak
+backends:
+  flatpak:
+    summary: Community-maintained Flathub Flatpak package
+    pros:
+    - Maintained on Flathub with regular updates
+    - Same sandboxed runtime on every Linux distribution
+    cons:
+    - Requires Flatpak runtime
+    remote: flathub
+    app_id: org.eclipse.Java

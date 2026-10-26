@@ -156,6 +156,17 @@ class BackendsTest
     assert_equal "arch", app.state.get_installed("jump-desktop").dig("metadata", "distro")
   end
 
+  def test_existing_install_is_adopted_instead_of_reinstalled
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
+    backend = app.backends.fetch("flatpak")
+    backend.define_singleton_method(:installed?) { |*| true }
+    backend.define_singleton_method(:install) { |*| raise "must not install over an existing copy" }
+    out, = capture_io { app.run(%w[install moonlight --flatpak]) }
+    assert_includes out, "already installed via FLATPAK; adopting it"
+    assert_equal "com.moonlight_stream.Moonlight",
+                 app.state.get_installed("moonlight").dig("metadata", "package_definition", "app_id")
+  end
+
   def test_lifecycle_uses_canonical_catalog_name
     app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=arch\n"))
     app.state.record_install("jump-desktop", "pacman")

@@ -1,0 +1,15 @@
+name: sober
+display_name: Sober
+description: Play, chat & explore on Roblox
+homepage: https://sober.vinegarhq.org
+default: flatpak
+backends:
+  flatpak:
+    summary: Official Flathub Flatpak package (verified publisher)
+    pros:
+    - Published on Flathub by the upstream developer
+    - Same sandboxed runtime on every Linux distribution
+    cons:
+    - Requires Flatpak runtime
+    remote: flathub
+    app_id: org.vinegarhq.Sober
