@@ -48,24 +48,53 @@ expect "tap-qualified names go to Homebrew" brew install owner/tap/tool <<'OUT'
 brew install owner/tap/tool
 OUT
 
-expect "bare upgrade updates Homebrew, Flatpak and brew app" brew upgrade -y <<'OUT'
-brew upgrade
-flatpak update -y
-brew app upgrade
+expect "bare upgrade upgrades everything through brew app" brew upgrade -y <<'OUT'
+brew app upgrade -y
 OUT
 
 expect "dry-run upgrade only previews" brew upgrade --dry-run <<'OUT'
-brew upgrade --dry-run
-flatpak remote-ls --updates
 brew app upgrade --dry-run
 OUT
 
-expect "named upgrade goes through brew app" brew upgrade moonlight <<'OUT'
-brew app upgrade moonlight
+expect "Homebrew-only upgrade options stay with Homebrew" brew upgrade --greedy <<'OUT'
+brew upgrade --greedy
 OUT
 
-expect "other subcommands pass through" brew info gh <<'OUT'
-brew info gh
+expect "named upgrade goes through brew app" brew upgrade moonlight kwin <<'OUT'
+brew app upgrade moonlight
+brew app upgrade kwin
+OUT
+
+expect "uninstall and its aliases route by owner" brew rm moonlight <<'OUT'
+brew app uninstall moonlight
+OUT
+
+expect "list and outdated cover every manager" brew list <<'OUT'
+brew app list
+OUT
+
+expect "outdated covers every manager" brew outdated <<'OUT'
+brew app outdated
+OUT
+
+expect "list with a name stays with Homebrew" brew list gh <<'OUT'
+brew list gh
+OUT
+
+expect "info and search go through brew app" brew info ark <<'OUT'
+brew app info ark
+OUT
+
+expect "search goes through brew app" brew search moonlight <<'OUT'
+brew app search moonlight
+OUT
+
+expect "Homebrew JSON info stays with Homebrew" brew info --json=v2 gh <<'OUT'
+brew info --json=v2 gh
+OUT
+
+expect "other subcommands pass through" brew doctor <<'OUT'
+brew doctor
 OUT
 
 printf '==> All brew wrapper tests passed.\n'

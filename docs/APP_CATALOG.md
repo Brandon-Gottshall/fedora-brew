@@ -134,15 +134,26 @@ backends:
 
 ### One `brew` for everything
 
-`scripts/shell/brew.bash` wraps the `brew` command in your shell. Source it from your profile:
+`brew app` reads every package manager live: Homebrew, pacman and the AUR (Arch), DNF (Fedora), Flatpak, and the tap's AppImage and archive installs. It doesn't rely on its own records, so packages installed with pacman, an AUR helper, Shelly or `flatpak` are covered as soon as they exist.
+
+| Command | What it does |
+|---|---|
+| `brew app list` | Installed packages from every manager, grouped by source (explicitly installed ones; dependencies are left out) |
+| `brew app outdated` | Pending updates from every manager (`brew outdated`, `checkupdates`, `yay -Qua`, `dnf check-update`, `flatpak remote-ls --updates`, newer GitHub releases) |
+| `brew app upgrade` | Homebrew, then the whole system in one transaction (`yay -Syu` / `pacman -Syu` on Arch, `dnf upgrade --refresh` on Fedora), then Flatpak apps and runtimes, then release apps. Every step runs even if an earlier one fails |
+| `brew app upgrade <name>` | Upgrades through whichever manager owns `<name>`. On Arch that is a full system upgrade, since partial upgrades aren't supported |
+| `brew app uninstall <name>` | Removes through the owning manager (`pacman -Rs`, `flatpak uninstall`, `brew uninstall`, …) |
+| `brew app info <name>` / `brew app search <text>` | Details from the owning manager, or results from the catalog, Homebrew, Flathub, the repositories and the AUR together |
+
+Fedora major-version upgrades (`dnf system-upgrade`) need a reboot, so they stay manual.
+
+`scripts/shell/brew.bash` makes these the plain `brew` commands in your interactive shell. Source it from your profile:
 
 ```bash
 . "$(brew --repository brandon-gottshall/fedora-brew)/scripts/shell/brew.bash"
 ```
 
-- `brew install <name>` runs `brew app install <name>`. Tap-qualified names and Homebrew-only options (`--cask`, `--HEAD`, …) go to Homebrew unchanged.
-- `brew upgrade` upgrades Homebrew, then every Flatpak app and runtime, then everything `brew app` manages: pacman, AUR, AppImage and archive installs. A failure in one package doesn't stop the rest.
-- `brew upgrade <name>` runs `brew app upgrade <name>`, which hands Homebrew-installed packages back to Homebrew.
+`brew install|upgrade|uninstall|list|outdated|info|search` then go through `brew app`. Tap-qualified names (`owner/tap/name`), Homebrew-only options (`--cask`, `--greedy`, `--json`, …), `brew list <formula>` and every other subcommand still go to Homebrew unchanged. Scripts that call `brew` never load the wrapper.
 
 ---
 

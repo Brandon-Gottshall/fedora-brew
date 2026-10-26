@@ -10,12 +10,19 @@ require_relative "backends/pacman"
 require_relative "backends/aur"
 require_relative "backends/release"
 require_relative "discovery"
+require_relative "system"
 
 module LinuxFormulas
   class App
-    attr_reader :state, :catalog, :resolver, :backends, :discovery, :dry_run
+    SOURCE_TITLES = {
+      "homebrew" => "Homebrew", "pacman" => "Pacman (repositories)", "aur" => "AUR / foreign",
+      "rpm" => "DNF / RPM", "flatpak" => "Flatpak", "appimage" => "AppImage", "archive" => "Release archives",
+    }.freeze
+    NATIVE_SOURCES = %w[pacman aur rpm].freeze
 
-    def initialize(dry_run: false, packages_dir: nil, config_dir: nil, platform: Platform.new, github: Github.new)
+    attr_reader :state, :catalog, :resolver, :backends, :discovery, :host, :dry_run
+
+    def initialize(dry_run: false, packages_dir: nil, config_dir: nil, platform: Platform.new, github: Github.new, host: nil)
       @dry_run = dry_run
       @state = State.new(config_dir: config_dir, platform: platform)
       @catalog = Catalog.new(packages_dir: packages_dir, platform: platform)
@@ -30,6 +37,7 @@ module LinuxFormulas
         "archive" => Backends::Archive.new(dry_run: dry_run, github: github),
       }
       @discovery = Discovery.new(backends: @backends, github: github)
+      @host = host || System.new(platform: platform, aur_helper: @state.config["aur_helper"], apps_dir: @backends["appimage"].apps_dir)
     end
 
     def run(args)
@@ -45,8 +53,12 @@ module LinuxFormulas
         cmd_uninstall(options)
       when "list", "ls"
         cmd_list(options)
+      when "outdated"
+        cmd_outdated(options)
       when "info", "show"
         cmd_info(options)
+      when "search"
+        cmd_search(options)
       when "config"
         cmd_config(options)
       when "doctor"
@@ -226,62 +238,59 @@ module LinuxFormulas
 
     def cmd_upgrade(opts)
       name = opts[:package_name]
-      return upgrade_all(opts) unless name
+      return upgrade_everything(opts) unless name
 
       package = catalog.find(name)
-      unless package
-        info = state.get_installed(name.downcase)
-        if info&.dig("metadata", "discovered")
-          exit 1 unless upgrade_recorded(name.downcase, info, opts)
-          return
-        end
-        # Not managed here: hand Homebrew-installed packages back to Homebrew.
-        if system("brew", "list", "--versions", name, out: File::NULL, err: File::NULL)
-          exit 1 unless backends.fetch("brew").upgrade({ "formula" => name }, Package.new({ "name" => name }), opts)
-          return
-        end
-        warn "Error: '#{name}' is not managed by brew app or installed with Homebrew."
-        exit 1
+      key = package ? package.name : name.downcase
+      if (info = state.get_installed(key))
+        exit 1 unless package ? upgrade_catalog(package, info, opts) : upgrade_recorded(key, info, opts)
+        return
       end
 
-      name = package.name
-      installed_info = state.get_installed(name)
-      backend_name = resolver.resolve(package, explicit_backend: opts[:backend] || installed_info&.dig("backend"), interactive: false)
-      backend = backends[backend_name]
-      unless backend
-        warn "Error: Backend '#{backend_name}' not available for #{name}."
-        exit 1
-      end
-
-      puts "==> Upgrading #{package.display_name} via #{backend_name.upcase}..."
-      exit 1 unless backend.upgrade(package.backend(backend_name), package, opts)
+      owner = pick_owner(name, opts)
+      exit 1 unless owner && upgrade_owner(owner, opts)
     end
 
-    # Upgrade every managed application, continuing past failures so one broken
-    # package never blocks the rest; exits non-zero if any failed.
-    def upgrade_all(opts)
-      puts "==> Upgrading all managed applications..."
-      failed = []
-      state.installed.each do |pkg_name, info|
-        pkg = catalog.find(pkg_name)
-        ok = if pkg.nil? && info.dig("metadata", "discovered")
-          upgrade_recorded(pkg_name, info, opts)
-        elsif pkg.nil?
-          warn "Error: Manifest for managed package '#{pkg_name}' is missing; restore it before upgrading."
-          false
-        elsif (b = backends[info["backend"]]) && pkg.has_backend?(info["backend"])
-          puts "--> Upgrading #{pkg.display_name} (#{info['backend']})..."
-          b.upgrade(pkg.backend(info["backend"]), pkg, opts)
-        else
-          warn "Error: Recorded backend '#{info['backend']}' for #{pkg_name} is unavailable on this platform."
-          false
-        end
-        failed << pkg_name unless ok
+    # One pass over every package manager: Homebrew, the distro's packages in
+    # a single transaction (repositories + AUR on Arch, which does not support
+    # partial upgrades), Flatpak apps and runtimes, then release apps. Later
+    # steps still run when an earlier one fails; the exit status reports it.
+    def upgrade_everything(opts)
+      if dry_run
+        puts "==> Preview: these updates would be installed"
+        return cmd_outdated(opts)
+      end
+
+      steps = [["Homebrew", -> { run_step("brew", "upgrade") }]]
+      if (command = host.system_upgrade_command(interactive: opts[:interactive]))
+        steps << ["System packages", -> { run_step(*command) }]
+      end
+      steps << ["Flatpak apps and runtimes", -> { run_step("flatpak", "update", "-y") }] if backends.fetch("flatpak").available?
+      release_apps.each do |receipt, definition|
+        package = Package.new({ "name" => receipt["name"] })
+        steps << ["#{receipt['name']} (#{receipt['kind']})", -> { backends.fetch(receipt["kind"]).upgrade(definition, package, opts) }]
+      end
+
+      failed = steps.filter_map do |label, step|
+        puts "\n==> Upgrading #{label}"
+        label unless step.call
       end
       return if failed.empty?
 
       warn "\n✖ Failed to upgrade: #{failed.join(', ')}"
       exit 1
+    end
+
+    def upgrade_catalog(package, info, opts)
+      backend_name = resolver.resolve(package, explicit_backend: opts[:backend] || info["backend"], interactive: false)
+      backend = backends[backend_name]
+      unless backend
+        warn "Error: Backend '#{backend_name}' not available for #{package.name}."
+        return false
+      end
+
+      puts "==> Upgrading #{package.display_name} via #{backend_name.upcase}..."
+      backend.upgrade(package.backend(backend_name), package, opts)
     end
 
     # Upgrade an app installed through discovery from its saved definition.
@@ -297,6 +306,67 @@ module LinuxFormulas
       backend.upgrade(package_def, package, opts)
     end
 
+    def upgrade_owner(entry, opts)
+      case entry.source
+      when "homebrew"
+        run_step("brew", "upgrade", entry.name)
+      when "rpm"
+        run_step("sudo", "dnf", "upgrade", *(opts[:interactive] ? [] : ["-y"]), entry.name)
+      when "pacman", "aur"
+        puts "==> Arch upgrades packages together; running a full system upgrade for #{entry.name}."
+        run_step(*host.system_upgrade_command(interactive: opts[:interactive]))
+      when "flatpak"
+        run_step("flatpak", "update", "-y", entry.id)
+      else
+        receipt, definition = release_apps.find { |item, _| item["name"] == entry.name }
+        receipt ? backends.fetch(entry.source).upgrade(definition, Package.new({ "name" => entry.name }), opts) : false
+      end
+    end
+
+    # Release apps with the definition each was installed from.
+    def release_apps
+      host.receipts.filter_map do |receipt|
+        definition = receipt["definition"] ||
+                     state.get_installed(receipt["name"])&.dig("metadata", "package_definition") ||
+                     catalog.find(receipt["name"])&.backend(receipt["kind"])
+        [receipt, definition] if definition && backends[receipt["kind"]]
+      end
+    end
+
+    # The installed package a name refers to, whichever manager owns it. With
+    # several owners, ask (or require --backend when not interactive).
+    def pick_owner(name, opts)
+      source = opts[:backend] && { "brew" => "homebrew" }.fetch(resolver.normalize_backend(opts[:backend])) { |key| key }
+      owners = host.owners(name).select { |entry| source.nil? || entry.source == source }
+      if owners.empty?
+        warn "Error: '#{name}' is not installed through Homebrew, #{host.platform.family == 'fedora' ? 'DNF' : 'pacman, the AUR'}, Flatpak or a release app."
+        return nil
+      end
+      return owners.first if owners.length == 1
+
+      puts "'#{name}' is installed more than once:"
+      owners.each_with_index { |entry, index| puts "  #{index + 1}) #{SOURCE_TITLES[entry.source]}: #{entry.name} #{entry.version}" }
+      unless opts[:interactive] && $stdin.tty?
+        warn "Choose one with --backend=<#{owners.map(&:source).uniq.join('|')}>."
+        return nil
+      end
+      print "Which one? [1-#{owners.length}, q = cancel]: "
+      input = $stdin.gets.to_s.strip
+      input.match?(/\A\d+\z/) && input.to_i.between?(1, owners.length) ? owners[input.to_i - 1] : nil
+    rescue Interrupt
+      nil
+    end
+
+    def run_step(*cmd)
+      if dry_run
+        puts "[dry-run] #{cmd.join(' ')}"
+        true
+      else
+        puts "==> #{cmd.join(' ')}"
+        system(*cmd)
+      end
+    end
+
     def cmd_uninstall(opts)
       name = opts[:package_name]
       unless name
@@ -305,8 +375,12 @@ module LinuxFormulas
       end
 
       package = catalog.find(name)
-      name = package.name if package
-      installed_info = state.get_installed(name)
+      key = package ? package.name : name
+      installed_info = state.get_installed(key)
+      unless installed_info
+        owners = host.owners(name)
+        return uninstall_owner(name, opts) unless owners.empty?
+      end
 
       backend_name = opts[:backend] || installed_info&.dig("backend")
       if package
@@ -316,47 +390,93 @@ module LinuxFormulas
       end
 
       unless backend_name && backends[backend_name]
-        warn "Error: Could not determine backend for '#{name}'."
+        warn "Error: '#{name}' is not installed through any package manager brew knows about."
         exit 1
       end
 
       pkg_def = if package
         package.backend(backend_name)
       else
-        installed_info&.dig("metadata", "package_definition") || { "package" => name, "app_id" => name, "formula" => name }
+        installed_info&.dig("metadata", "package_definition") || { "package" => key, "app_id" => key, "formula" => key }
       end
-      display = package ? package.display_name : name
+      display = package ? package.display_name : key
 
       puts "==> Uninstalling #{display} from #{backend_name.upcase} backend..."
-      success = backends[backend_name].uninstall(pkg_def, package || Package.new({ "name" => name }), opts)
+      success = backends[backend_name].uninstall(pkg_def, package || Package.new({ "name" => key }), opts)
 
       if success
-        state.record_uninstall(name) unless dry_run
+        state.record_uninstall(key) unless dry_run
         puts dry_run ? "\nRemoval preview complete for #{display}." : "\n✔ Successfully uninstalled #{display}."
       else
         exit 1
       end
     end
 
-    def cmd_list(_opts)
-      installed = state.installed
-      all_catalog = catalog.all
+    # Remove a package brew app never recorded, through whichever manager owns it.
+    def uninstall_owner(name, opts)
+      entry = pick_owner(name, opts)
+      exit 1 unless entry
 
-      puts "Installed Managed Applications:"
-      if installed.empty?
-        puts "  (None managed yet. Use 'brew app install <name>' to install)"
-      else
-        installed.each do |pkg_name, info|
-          pkg = catalog.find(pkg_name)
-          display = pkg ? pkg.display_name : pkg_name
-          puts "  • #{display} [#{info['backend']}] (installed #{info['installed_at']})"
+      confirm = opts[:interactive] ? [] : ["--noconfirm"]
+      ok = case entry.source
+      when "homebrew" then run_step("brew", "uninstall", entry.name)
+      when "pacman", "aur" then run_step("sudo", "pacman", "-Rs", *confirm, entry.name)
+      when "rpm" then run_step("sudo", "dnf", "remove", *(opts[:interactive] ? [] : ["-y"]), entry.name)
+      when "flatpak" then run_step("flatpak", "uninstall", *(opts[:interactive] ? [] : ["-y"]), entry.id)
+      else backends.fetch(entry.source).uninstall({}, Package.new({ "name" => entry.name }), opts)
+      end
+      exit 1 unless ok
+      puts dry_run ? "\nRemoval preview complete for #{entry.name}." : "\n✔ Uninstalled #{entry.name} (#{SOURCE_TITLES[entry.source]})."
+    end
+
+    def cmd_list(_opts)
+      entries = host.installed
+      SOURCE_TITLES.each do |source, title|
+        group = entries.select { |entry| entry.source == source }.sort_by { |entry| entry.name.downcase }
+        next if group.empty?
+
+        puts "#{title} (#{group.length}):"
+        group.each do |entry|
+          detail = entry.id && entry.id != entry.name ? "  #{entry.id}" : ""
+          puts "  #{entry.name.ljust(36)} #{entry.version}#{detail}"
         end
+        puts
       end
 
-      puts "\nAvailable Catalog Packages:"
-      all_catalog.each do |pkg|
-        status = installed.key?(pkg.name) ? " [Installed: #{installed[pkg.name]['backend']}]" : ""
-        puts "  • #{pkg.name.ljust(15)} - #{pkg.display_name} (backends: #{pkg.backend_names.join(', ')})#{status}"
+      installed_names = entries.flat_map { |entry| [entry.name.downcase, entry.id&.downcase] }.compact
+      puts "Available Catalog Packages:"
+      catalog.all.each do |pkg|
+        recorded = state.get_installed(pkg.name)
+        status = recorded ? " [Installed: #{recorded['backend']}]" : ""
+        status = " [Installed]" if status.empty? && pkg.backends.values.any? { |definition| installed_names.include?(definition["app_id"].to_s.downcase) }
+        puts "  • #{pkg.name.ljust(18)} - #{pkg.display_name} (backends: #{pkg.backend_names.join(', ')})#{status}"
+      end
+    end
+
+    def cmd_outdated(_opts)
+      updates = host.outdated + release_updates
+      if updates.empty?
+        puts "Everything is up to date."
+        return true
+      end
+
+      SOURCE_TITLES.each do |source, title|
+        group = updates.select { |update| update.source == source }
+        next if group.empty?
+
+        puts "#{title} (#{group.length}):"
+        group.each { |update| puts "  #{update.name.ljust(36)} #{[update.current, update.latest].compact.join(' -> ')}" }
+        puts
+      end
+      true
+    end
+
+    def release_updates
+      release_apps.filter_map do |receipt, definition|
+        artifact = backends.fetch(receipt["kind"]).latest(definition)
+        next unless artifact && artifact["url"] != receipt["url"]
+
+        System::Update.new(source: receipt["kind"], name: receipt["name"], current: receipt["version"], latest: artifact["version"])
       end
     end
 
@@ -367,33 +487,92 @@ module LinuxFormulas
         exit 1
       end
 
-      package = catalog.find(name)
-      unless package
-        warn "Error: Package '#{name}' not found."
-        exit 1
+      owners = host.owners(name)
+      owners.each do |entry|
+        puts "==> #{entry.name} #{entry.version} (installed via #{SOURCE_TITLES[entry.source]})"
+        details = host.describe(entry)
+        puts details unless details.empty?
+        puts
       end
 
-      installed_info = state.get_installed(name)
+      package = catalog.find(name)
+      return catalog_info(package, owners) if package
+      return unless owners.empty?
+      return if system("brew", "info", name, err: File::NULL)
+
+      candidates = discovery.find(name)
+      if candidates.empty?
+        warn "Error: '#{name}' was not found in the catalog, Homebrew, Flathub, the repositories, the AUR or GitHub releases."
+        exit 1
+      end
+      puts "#{name} is not installed. Available from:"
+      candidates.each { |candidate| puts "  #{candidate.backend.upcase.ljust(8)} #{candidate.label} - #{candidate.detail}" }
+    end
+
+    def catalog_info(package, owners = [])
+      installed_info = state.get_installed(package.name)
+      status = if installed_info
+        "Installed via #{installed_info['backend']}"
+      elsif owners.any?
+        "Installed via #{owners.map { |entry| SOURCE_TITLES[entry.source] }.uniq.join(', ')}"
+      else
+        "Not installed"
+      end
 
       puts "=================================================="
       puts "  #{package.display_name} (#{package.name})"
       puts "=================================================="
       puts "Description: #{package.description}"
       puts "Homepage:    #{package.homepage}"
-      puts "Status:      #{installed_info ? "Installed via #{installed_info['backend']}" : 'Not installed'}"
+      puts "Status:      #{status}"
       puts "Default:     #{package.default_backend}"
       puts "\nAvailable Backends:"
       package.backends.each do |b_name, b_info|
         puts "  [#{b_name.upcase}]"
         puts "    Summary: #{b_info['summary']}" if b_info["summary"]
-        if b_info["pros"]
-          b_info["pros"].each { |p| puts "    + #{p}" }
-        end
-        if b_info["cons"]
-          b_info["cons"].each { |c| puts "    - #{c}" }
-        end
+        Array(b_info["pros"]).each { |p| puts "    + #{p}" }
+        Array(b_info["cons"]).each { |c| puts "    - #{c}" }
       end
       puts "=================================================="
+    end
+
+    def cmd_search(opts)
+      term = opts[:package_name]
+      unless term
+        warn "Usage: brew app search <text>"
+        exit 1
+      end
+
+      # Tick a result only when the same source has it installed.
+      entries = host.installed
+      installed_in = lambda do |*sources|
+        entries.select { |entry| sources.include?(entry.source) }.flat_map { |entry| [entry.name.downcase, entry.id&.downcase] }.compact
+      end
+      installed = {
+        "catalog" => catalog.all.select { |pkg| state.get_installed(pkg.name) }.map(&:name),
+        "homebrew" => installed_in.call("homebrew"), "flatpak" => installed_in.call("flatpak"),
+        "pacman" => installed_in.call("pacman", "aur"), "aur" => installed_in.call("pacman", "aur"), "rpm" => installed_in.call("rpm"),
+      }
+      matches = catalog.all.select do |pkg|
+        [pkg.name, pkg.display_name, *pkg.aliases].any? { |text| text.downcase.include?(term.downcase) }
+      end
+      groups = { "catalog" => matches.map { |pkg| [pkg.name, "#{pkg.display_name} (backends: #{pkg.backend_names.join(', ')})"] } }
+      groups.merge!(host.search(term))
+
+      titles = { "catalog" => "Catalog" }.merge(SOURCE_TITLES)
+      found = false
+      groups.each do |source, results|
+        next if results.empty?
+
+        found = true
+        puts "==> #{titles.fetch(source, source)}"
+        results.each do |result_name, detail|
+          mark = installed.fetch(source, []).include?(result_name.downcase) ? " ✔" : ""
+          puts "  #{result_name}#{mark}#{detail.to_s.empty? ? '' : "  #{detail}"}"
+        end
+        puts
+      end
+      puts "No matches for '#{term}'." unless found
     end
 
     def cmd_config(opts)
@@ -428,10 +607,14 @@ module LinuxFormulas
           brew app install <package> [options]    Install application with backend choice
                                                   (names outside the catalog are matched exactly on
                                                   Homebrew, Flathub, pacman, AUR, then GitHub releases)
-          brew app upgrade [package]              Upgrade installed application(s)
+          brew app upgrade <package>              Upgrade one package via whichever manager owns it
           brew app uninstall <package>            Uninstall application
-          brew app list                           List installed & available packages
-          brew app info <package>                 Show package details and backends
+          brew app upgrade                        Upgrade everything: Homebrew, system packages
+                                                  (one pacman/AUR or dnf transaction), Flatpak, release apps
+          brew app list                           List packages from every package manager
+          brew app outdated                       Show pending updates from every package manager
+          brew app info <package>                 Show details from whichever manager owns it
+          brew app search <text>                  Search catalog, Homebrew, Flathub, repositories and AUR
           brew app config [key] [value]           View or set global preferences
           brew app doctor                         Run diagnostic checks
 

@@ -69,6 +69,16 @@ class BackendsTest
     LinuxFormulas::Catalog.new(platform: os)
   end
 
+  # A package-manager runner answering from a table of "command line" => stdout.
+  def fake_runner(responses = {})
+    ->(cmd) { responses.key?(cmd.join(" ")) ? [responses[cmd.join(" ")], true] : ["", false] }
+  end
+
+  def fake_host(os, responses = {}, aur_helper: nil, apps_dir: nil)
+    LinuxFormulas::System.new(platform: os, aur_helper: aur_helper, apps_dir: apps_dir || File.join(@temp, "apps"),
+                              runner: fake_runner(responses))
+  end
+
   def test_distro_detection_uses_id_and_id_like
     assert_equal "arch", platform("ID=cachyos\nID_LIKE=arch\n").family
     assert_equal "arch", platform("ID=custom\nID_LIKE=\"arch linux\"\n").family
@@ -141,14 +151,14 @@ class BackendsTest
   end
 
   def test_removed_manifest_can_be_uninstalled_with_recorded_backend
-    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=arch\n"))
+    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=arch\n"), host: fake_host(platform("ID=arch\n")))
     app.state.record_install("removed-package", "pacman")
     out, = capture_io { app.run(%w[uninstall removed-package]) }
     assert_includes out, "sudo pacman -R removed-package"
   end
 
   def test_success_records_platform_and_failed_install_does_not
-    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"), host: fake_host(platform("ID=cachyos\n")))
     backend = app.backends.fetch("pacman")
     backend.define_singleton_method(:install) { |*| false }
     capture_io { assert_raises(SystemExit) { app.run(%w[install jump-desktop --pacman]) } }
@@ -159,7 +169,7 @@ class BackendsTest
   end
 
   def test_existing_install_is_adopted_instead_of_reinstalled
-    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"), host: fake_host(platform("ID=cachyos\n")))
     backend = app.backends.fetch("flatpak")
     backend.define_singleton_method(:installed?) { |*| true }
     backend.define_singleton_method(:install) { |*| raise "must not install over an existing copy" }
@@ -170,7 +180,7 @@ class BackendsTest
   end
 
   def test_lifecycle_uses_canonical_catalog_name
-    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=arch\n"))
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=arch\n"), host: fake_host(platform("ID=arch\n")))
     app.state.record_install("jump-desktop", "pacman")
     backend = app.backends.fetch("pacman")
     calls = []
@@ -183,12 +193,11 @@ class BackendsTest
   end
 
   def test_removed_manifest_uses_saved_backend_package_identity
-    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=arch\n"))
+    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=arch\n"), host: fake_host(platform("ID=arch\n")))
     app.state.record_install("removed-package", "aur", metadata: {"package_definition" => {"package" => "real-package-bin"}})
     out, = capture_io { app.run(%w[uninstall removed-package]) }
     assert_includes out, "sudo pacman -R real-package-bin"
     refute_includes out, "sudo pacman -R removed-package"
-    capture_io { assert_raises(SystemExit) { app.run(%w[upgrade]) } }
   end
 
   def test_aur_upgrade_and_remove_do_not_require_same_helper
@@ -205,7 +214,7 @@ class BackendsTest
   end
 
   def test_dry_runs_do_not_mutate_installed_state
-    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=cachyos\n"))
+    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: platform("ID=cachyos\n"), host: fake_host(platform("ID=cachyos\n")))
     capture_io { app.run(%w[install jump-desktop --pacman --yes]) }
     assert_empty app.state.installed
     refute File.exist?(app.state.state_file)
@@ -290,7 +299,7 @@ class BackendsTest
 
   def test_discovery_searches_github_only_when_nothing_else_matches
     github = FakeGithub.new({ "tag" => "v1", "assets" => [{ "name" => "x-x86_64.AppImage", "url" => "u" }] })
-    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"), github: github)
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"), github: github, host: fake_host(platform("ID=cachyos\n")))
     discovery = app.discovery
     %w[flatpak pacman aur].each { |b| app.backends.fetch(b).define_singleton_method(:available?) { true } }
     discovery.define_singleton_method(:probe_flatpak) do |name|
@@ -306,7 +315,7 @@ class BackendsTest
   end
 
   def test_discovered_install_needs_confirmation_and_upgrades_from_saved_definition
-    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"), host: fake_host(platform("ID=cachyos\n")))
     candidate = LinuxFormulas::Discovery::Candidate.new(
       backend: "flatpak", package_def: { "app_id" => "org.example.Tool", "remote" => "flathub" }, label: "Tool", detail: "",
     )
@@ -328,23 +337,71 @@ class BackendsTest
 
     capture_io { app.run(%w[install tool -y]) }
     assert app.state.get_installed("tool").dig("metadata", "discovered")
-    capture_io { app.run(%w[upgrade]) }
     capture_io { app.run(%w[upgrade tool]) }
-    assert_equal [[:install, "org.example.Tool"], [:upgrade, "org.example.Tool"], [:upgrade, "org.example.Tool"]], calls
+    assert_equal [[:install, "org.example.Tool"], [:upgrade, "org.example.Tool"]], calls
   end
 
-  def test_upgrade_all_continues_past_failures
-    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
+  def test_upgrade_everything_runs_each_manager_once_and_continues_past_failures
+    os = platform("ID=cachyos\n")
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: os, host: fake_host(os, aur_helper: "yay"))
+    app.backends.fetch("flatpak").define_singleton_method(:available?) { true }
     app.state.record_install("moonlight", "flatpak")
-    app.state.record_install("sober", "flatpak")
-    upgraded = []
-    app.backends.fetch("flatpak").define_singleton_method(:upgrade) do |definition, *|
-      upgraded << definition["app_id"]
-      definition["app_id"] != "com.moonlight_stream.Moonlight"
-    end
-    _, err = capture_io { assert_raises(SystemExit) { app.run(%w[upgrade]) } }
-    assert_equal %w[com.moonlight_stream.Moonlight org.vinegarhq.Sober], upgraded
-    assert_includes err, "Failed to upgrade: moonlight"
+    app.backends.fetch("flatpak").define_singleton_method(:upgrade) { |*| raise "covered by flatpak update" }
+    commands = []
+    app.define_singleton_method(:run_step) { |*cmd| commands << cmd.join(" "); cmd.first != "brew" }
+    _, err = capture_io { assert_raises(SystemExit) { app.run(%w[upgrade -y]) } }
+    assert_equal ["brew upgrade", "yay -Syu --noconfirm", "flatpak update -y"], commands
+    assert_includes err, "Failed to upgrade: Homebrew"
+  end
+
+  def test_dry_run_upgrade_previews_pending_updates
+    os = platform("ID=cachyos\n")
+    host = fake_host(os, { "checkupdates" => "kwin 6.8.1-1 -> 6.8.1-2\n", "flatpak remote-ls --updates --columns=application,version" =>
+                           "org.gnome.Platform\t\n" })
+    app = LinuxFormulas::App.new(dry_run: true, config_dir: @temp, platform: os, host: host)
+    out, = capture_io { app.run(%w[upgrade]) }
+    assert_includes out, "kwin"
+    assert_includes out, "6.8.1-1 -> 6.8.1-2"
+    assert_includes out, "org.gnome.Platform"
+  end
+
+  def test_system_view_reads_every_manager
+    os = platform("ID=cachyos\n")
+    host = fake_host(os, {
+      "brew list --formula --installed-on-request" => "gh\n",
+      "brew list --formula --versions" => "gh 2.102.0\nunzip 6.0_8\n",
+      "brew list --cask --versions" => "claude-code 2.1.308\n",
+      "pacman -Qmq" => "antigravity\n",
+      "pacman -Qe" => "ark 26.08.2-1\nantigravity 2.26.0-1\n",
+      "flatpak list --app --columns=application,name,version" => "com.moonlight_stream.Moonlight\tMoonlight\t6.2.0\n",
+      "pacman -Q kwin" => "kwin 6.8.1-1\n",
+    })
+    installed = host.installed.map { |entry| [entry.source, entry.name] }
+    assert_equal [%w[homebrew gh], %w[homebrew claude-code], %w[pacman ark], %w[aur antigravity], %w[flatpak Moonlight]], installed
+    assert_equal "com.moonlight_stream.Moonlight", host.owners("moonlight").first.id
+    assert_equal [%w[pacman kwin]], host.owners("kwin").map { |entry| [entry.source, entry.name] }
+    assert_empty host.owners("missing")
+  end
+
+  def test_system_upgrade_command_per_distro
+    arch = fake_host(platform("ID=cachyos\n"), aur_helper: "yay")
+    assert_equal %w[yay -Syu], arch.system_upgrade_command
+    assert_equal %w[yay -Syu --noconfirm], arch.system_upgrade_command(interactive: false)
+    assert_equal %w[sudo dnf upgrade --refresh -y], fake_host(platform("ID=fedora\n")).system_upgrade_command(interactive: false)
+    assert_equal nil, fake_host(platform("ID=debian\n")).system_upgrade_command
+  end
+
+  def test_unrecorded_packages_are_removed_and_upgraded_by_their_owner
+    os = platform("ID=cachyos\n")
+    host = fake_host(os, { "pacman -Qe" => "ark 26.08.2-1\n", "pacman -Q kwin" => "kwin 6.8.1-1\n" }, aur_helper: "yay")
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: os, host: host)
+    commands = []
+    app.define_singleton_method(:run_step) { |*cmd| commands << cmd.join(" "); true }
+    capture_io { app.run(%w[uninstall ark]) }
+    capture_io { app.run(%w[upgrade kwin]) }
+    assert_equal ["sudo pacman -Rs ark", "yay -Syu"], commands
+    _, err = capture_io { assert_raises(SystemExit) { app.run(%w[uninstall nothing-here]) } }
+    assert_includes err, "not installed"
   end
 
   def test_appimage_install_upgrade_and_uninstall

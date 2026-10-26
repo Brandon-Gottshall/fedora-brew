@@ -19,6 +19,8 @@ module LinuxFormulas
     class Release < Base
       RECEIPT = ".linux-formulas.json"
 
+      attr_reader :apps_dir
+
       def initialize(dry_run: false, github: Github.new, apps_dir: nil, bin_dir: nil)
         super(dry_run: dry_run)
         @github = github
@@ -32,6 +34,12 @@ module LinuxFormulas
 
       def available?
         binary_exists?("curl")
+      end
+
+      # The artifact the definition currently points at (newest GitHub release
+      # or the pinned URL), without downloading it.
+      def latest(package_def)
+        resolve(package_def)
       end
 
       def installed?(_package_def, manifest)
@@ -164,6 +172,7 @@ module LinuxFormulas
           File.write(File.join(staging, RECEIPT), JSON.pretty_generate(
             "name" => manifest.name, "kind" => kind, "version" => artifact["version"],
             "url" => artifact["url"], "asset" => artifact["asset"], "sha256" => digest,
+            "definition" => package_def.slice("url", "sha256", "version", "github", "asset", "binary"),
             "executable" => executable, "link" => link, "installed_at" => Time.now.utc.iso8601,
           ))
           previous = File.join(work, "previous")
