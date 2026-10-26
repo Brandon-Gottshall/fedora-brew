@@ -2,8 +2,8 @@ class ShadowPc < Formula
   desc "Cloud gaming client for Shadow PC"
   homepage "https://shadow.tech/"
   url "https://update.shadow.tech/launcher/prod/linux/ubuntu_18.04/ShadowPC.AppImage"
-  version "9.9.10457.17055"
-  sha256 "5dc931780f2b58fe12b5b4f8d59adb13b838ced352ddb6cc361edbba102aab11"
+  version "9.9.10481.17367"
+  sha256 "28aaece4a794dd7e67716110bc65627d4a12451aab9c0879236eb6f916ad4da1"
   license :cannot_represent
 
   livecheck do
