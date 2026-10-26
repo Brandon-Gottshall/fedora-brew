@@ -248,6 +248,37 @@ class BackendsTest
     assert_equal "claude-code", catalog(platform("ID=cachyos\n")).find("Claude").name
   end
 
+  def test_distro_sections_can_exclude_shared_backends
+    assert_equal ["pacman"], catalog(platform("ID=cachyos\n")).find("claude").backend_names
+    assert_equal ["brew"], catalog(platform("ID=fedora\n")).find("claude").backend_names
+  end
+
+  def with_stdin(text)
+    original = $stdin
+    $stdin = StringIO.new(text)
+    yield
+  ensure
+    $stdin = original
+  end
+
+  def test_backend_prompt_can_be_cancelled_and_reasks_on_bad_input
+    os = platform("ID=cachyos\n")
+    resolver = LinuxFormulas::Resolver.new(state: LinuxFormulas::State.new(config_dir: @temp, platform: os))
+    jump = catalog(os).find("jump-desktop")
+    %W[q\n cancel\n #{""}].each do |input|
+      with_stdin(input) do
+        capture_io { assert_raises(LinuxFormulas::Resolver::Cancelled) { resolver.send(:prompt_user, jump) } }
+      end
+    end
+    with_stdin("bogus\n\n") do
+      out, = capture_io { assert_equal jump.default_backend, resolver.send(:prompt_user, jump) }
+      assert_includes out, "Not an option: 'bogus'"
+    end
+    with_stdin("2\n") do
+      capture_io { assert_equal (jump.backend_names - [jump.default_backend]).first, resolver.send(:prompt_user, jump) }
+    end
+  end
+
   def test_select_asset_prefers_native_arch_and_linux_archives
     github = FakeGithub.new
     assets = %w[tool-aarch64.AppImage tool-x86_64.AppImage tool-src.tar.gz tool-darwin-x64.tar.gz tool-linux-amd64.tar.gz]

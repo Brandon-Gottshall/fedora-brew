@@ -117,7 +117,12 @@ module LinuxFormulas
       package = catalog.find(name)
       return install_discovered(name, opts) unless package
 
-      backend_name = resolver.resolve(package, explicit_backend: opts[:backend], interactive: opts[:interactive])
+      begin
+        backend_name = resolver.resolve(package, explicit_backend: opts[:backend], interactive: opts[:interactive])
+      rescue Resolver::Cancelled
+        warn "\nCancelled; nothing was installed."
+        exit 1
+      end
       perform_install(package, backend_name, package.backend(backend_name), opts)
     end
 
@@ -203,11 +208,19 @@ module LinuxFormulas
       end
 
       range = candidates.length > 1 ? "1-#{candidates.length}, " : ""
-      print "\nInstall 1) #{candidates.first.label}? [#{range}Enter = 1, n = cancel]: "
-      input = $stdin.gets.to_s.strip.downcase
-      return candidates.first if input.empty? || input == "y"
-      return candidates[input.to_i - 1] if input.match?(/\A\d+\z/) && input.to_i.between?(1, candidates.length)
+      loop do
+        print "\nInstall 1) #{candidates.first.label}? [#{range}Enter = 1, q = cancel]: "
+        input = $stdin.gets
+        return nil if input.nil?
 
+        input = input.strip.downcase
+        return candidates.first if input.empty? || input == "y"
+        return nil if %w[q quit n no cancel].include?(input)
+        return candidates[input.to_i - 1] if input.match?(/\A\d+\z/) && input.to_i.between?(1, candidates.length)
+
+        puts "Not an option: '#{input}'."
+      end
+    rescue Interrupt
       nil
     end
 

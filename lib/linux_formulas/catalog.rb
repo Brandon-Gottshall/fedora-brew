@@ -16,7 +16,8 @@ module LinuxFormulas
       @aliases = Array(data["aliases"]).map { |name| name.to_s.downcase }
       section = platform.macos? ? data.fetch("macos", {}) : data.fetch("distros", {}).fetch(platform.family, {})
       shared = platform.macos? ? {} : data.fetch("backends", {})
-      @backends = shared.merge(section.fetch("backends", {}))
+      # A distro section can drop shared backends it has a better option for.
+      @backends = shared.merge(section.fetch("backends", {})).except(*Array(section["exclude"]))
       preferred = section["default"] || data["default"]
       @default_backend = @backends.key?(preferred) ? preferred : @backends.keys.first
     end

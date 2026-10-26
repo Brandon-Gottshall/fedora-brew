@@ -7,19 +7,20 @@ aliases:
 default: brew
 backends:
   brew:
-    summary: Official Homebrew cask maintained in Homebrew/homebrew-cask
+    summary: Official Homebrew cask (Homebrew ships Claude Code only as a cask)
     pros:
     - Updates through ordinary Homebrew commands
-    - Same install method on Linux and macOS
+    cons:
+    - A cask rather than a formula, since Claude Code is a prebuilt binary
     cask: claude-code
 distros:
   arch:
     default: pacman
+    exclude:
+    - brew
     backends:
       pacman:
         summary: Native package from the CachyOS repositories
         pros:
         - Updates with the rest of the system through pacman
-        cons:
-        - Only in the CachyOS repositories, not plain Arch
         package: claude-code
