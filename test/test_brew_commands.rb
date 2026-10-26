@@ -10,7 +10,7 @@ Dir.mktmpdir do |config|
   ENV["HOMEBREW_LINUX_FORMULAS_CONFIG_DIR"] = config
   begin
     [Homebrew::Cmd::App, Homebrew::Cmd::Linux].each do |klass|
-      %w[native pacman aur cask rpm dnf flatpak flathub brew tarball standalone].each do |backend|
+      %w[native pacman aur cask rpm dnf flatpak flathub brew tarball standalone appimage archive].each do |backend|
         klass.new(["install", "claude-desktop", "--#{backend}", "--dry-run", "--non-interactive"])
       end
       original_stdout = $stdout

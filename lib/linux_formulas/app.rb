@@ -8,12 +8,14 @@ require_relative "backends/flatpak"
 require_relative "backends/brew"
 require_relative "backends/pacman"
 require_relative "backends/aur"
+require_relative "backends/release"
+require_relative "discovery"
 
 module LinuxFormulas
   class App
-    attr_reader :state, :catalog, :resolver, :backends, :dry_run
+    attr_reader :state, :catalog, :resolver, :backends, :discovery, :dry_run
 
-    def initialize(dry_run: false, packages_dir: nil, config_dir: nil, platform: Platform.new)
+    def initialize(dry_run: false, packages_dir: nil, config_dir: nil, platform: Platform.new, github: Github.new)
       @dry_run = dry_run
       @state = State.new(config_dir: config_dir, platform: platform)
       @catalog = Catalog.new(packages_dir: packages_dir, platform: platform)
@@ -24,7 +26,10 @@ module LinuxFormulas
         "aur" => Backends::Aur.new(dry_run: dry_run, helper: @state.config["aur_helper"]),
         "flatpak" => Backends::Flatpak.new(dry_run: dry_run),
         "brew" => Backends::Brew.new(dry_run: dry_run),
+        "appimage" => Backends::AppImage.new(dry_run: dry_run, github: github),
+        "archive" => Backends::Archive.new(dry_run: dry_run, github: github),
       }
+      @discovery = Discovery.new(backends: @backends, github: github)
     end
 
     def run(args)
@@ -86,6 +91,8 @@ module LinuxFormulas
           options[:backend] = "flatpak"
         when "--brew", "--tarball", "--standalone"
           options[:backend] = "brew"
+        when "--appimage", "--archive"
+          options[:backend] = arg.delete_prefix("--")
         when /^--backend=(.+)$/
           options[:backend] = Regexp.last_match(1)
         else
@@ -103,18 +110,18 @@ module LinuxFormulas
     def cmd_install(opts)
       name = opts[:package_name]
       unless name
-        warn "Usage: brew app install <package> [--rpm|--pacman|--aur|--flatpak|--brew] [--dry-run]"
+        warn "Usage: brew app install <package> [--rpm|--pacman|--aur|--flatpak|--brew|--appimage|--archive] [--dry-run]"
         exit 1
       end
 
       package = catalog.find(name)
-      unless package
-        warn "Error: Package '#{name}' not found in catalog."
-        warn "Available packages: #{catalog.all.map(&:name).join(', ')}"
-        exit 1
-      end
+      return install_discovered(name, opts) unless package
 
       backend_name = resolver.resolve(package, explicit_backend: opts[:backend], interactive: opts[:interactive])
+      perform_install(package, backend_name, package.backend(backend_name), opts)
+    end
+
+    def perform_install(package, backend_name, package_def, opts, discovered: false)
       backend = backends[backend_name]
       unless backend
         warn "Error: Unsupported backend '#{backend_name}'."
@@ -123,16 +130,18 @@ module LinuxFormulas
 
       # Adopt an existing install (e.g. a system-wide Flatpak) instead of
       # installing a second copy alongside it.
-      if backend.installed?(package.backend(backend_name), package)
+      if backend.installed?(package_def, package)
         puts "==> #{package.display_name} is already installed via #{backend_name.upcase}; adopting it."
         success = true
       else
         puts "==> Installing #{package.display_name} using #{backend_name.upcase} backend..."
-        success = backend.install(package.backend(backend_name), package, opts)
+        success = backend.install(package_def, package, opts)
       end
 
       if success
-        state.record_install(package.name, backend_name, metadata: { "display_name" => package.display_name, "distro" => state.platform.family, "package_definition" => package.backend(backend_name) }) unless dry_run
+        metadata = { "display_name" => package.display_name, "distro" => state.platform.family, "package_definition" => package_def }
+        metadata["discovered"] = true if discovered
+        state.record_install(package.name, backend_name, metadata: metadata) unless dry_run
         puts dry_run ? "\nPreview complete for #{package.display_name} via #{backend_name.upcase}." : "\n✔ Successfully installed #{package.display_name} via #{backend_name.upcase}."
       else
         warn "\n✖ Installation of #{package.display_name} failed."
@@ -140,46 +149,139 @@ module LinuxFormulas
       end
     end
 
-    def cmd_upgrade(opts)
-      name = opts[:package_name]
-      if name
-        package = catalog.find(name)
-        unless package
-          warn "Error: Package '#{name}' not found in catalog."
-          exit 1
-        end
-
-        name = package.name
-        installed_info = state.get_installed(name)
-        backend_name = resolver.resolve(package, explicit_backend: opts[:backend] || installed_info&.dig("backend"), interactive: false)
-        backend = backends[backend_name]
-        unless backend
-          warn "Error: Backend '#{backend_name}' not available for #{name}."
-          exit 1
-        end
-
-        puts "==> Upgrading #{package.display_name} via #{backend_name.upcase}..."
-        exit 1 unless backend.upgrade(package.backend(backend_name), package, opts)
-      else
-        puts "==> Upgrading all managed applications..."
-        state.installed.each do |pkg_name, info|
-          pkg = catalog.find(pkg_name)
-          unless pkg
-            warn "Error: Manifest for managed package '#{pkg_name}' is missing; restore it before upgrading."
-            exit 1
+    # A name outside the catalog: an exact Homebrew formula/cask installs as
+    # usual (Homebrew keeps it updated); otherwise offer exact matches from
+    # Flathub, pacman, the AUR and GitHub releases and install the confirmed one.
+    def install_discovered(name, opts)
+      only = opts[:backend] && resolver.normalize_backend(opts[:backend])
+      if only.nil? || only == "brew"
+        homebrew = discovery.homebrew_match(name)
+        if homebrew
+          puts "==> '#{name}' is a #{homebrew.detail}"
+          package = Package.new({ "name" => name.downcase, "display_name" => homebrew.label })
+          brew = backends.fetch("brew")
+          if brew.installed?(homebrew.package_def, package)
+            puts "==> #{homebrew.label} is already installed with Homebrew; `brew upgrade` keeps it current."
+            return
           end
-
-          b_name = info["backend"]
-          b = backends[b_name]
-          if b && pkg.has_backend?(b_name)
-            puts "--> Upgrading #{pkg.display_name} (#{b_name})..."
-            exit 1 unless b.upgrade(pkg.backend(b_name), pkg, opts)
-          else
-            warn "Error: Recorded backend '#{b_name}' for #{pkg_name} is unavailable on this platform."
-            exit 1
-          end
+          exit 1 unless brew.install(homebrew.package_def, package, opts)
+          return
+        end
+        if only == "brew"
+          warn "Error: Homebrew has no formula or Linux cask named '#{name}'."
+          exit 1
         end
       end
+
+      puts "==> '#{name}' is not in the catalog or Homebrew; looking for exact matches..."
+      candidates = discovery.find(name, only: only)
+      if candidates.empty?
+        warn "Error: no exact match for '#{name}' on Homebrew, Flathub, pacman, the AUR or GitHub releases."
+        exit 1
+      end
+
+      puts "\nFound:"
+      candidates.each_with_index do |candidate, index|
+        puts "  #{index + 1}) #{candidate.backend.upcase.ljust(8)} #{candidate.label}"
+        puts "     #{candidate.detail}"
+      end
+      choice = choose_candidate(candidates, opts)
+      unless choice
+        warn "Cancelled; nothing was installed."
+        exit 1
+      end
+
+      package = Package.new({ "name" => name.downcase, "display_name" => choice.label })
+      perform_install(package, choice.backend, choice.package_def, opts, discovered: true)
+    end
+
+    def choose_candidate(candidates, opts)
+      return candidates.first if dry_run || !opts[:interactive]
+      unless $stdin.tty?
+        warn "Confirmation required: rerun with -y to install #{candidates.first.label} (#{candidates.first.backend})."
+        return nil
+      end
+
+      range = candidates.length > 1 ? "1-#{candidates.length}, " : ""
+      print "\nInstall 1) #{candidates.first.label}? [#{range}Enter = 1, n = cancel]: "
+      input = $stdin.gets.to_s.strip.downcase
+      return candidates.first if input.empty? || input == "y"
+      return candidates[input.to_i - 1] if input.match?(/\A\d+\z/) && input.to_i.between?(1, candidates.length)
+
+      nil
+    end
+
+    def cmd_upgrade(opts)
+      name = opts[:package_name]
+      return upgrade_all(opts) unless name
+
+      package = catalog.find(name)
+      unless package
+        info = state.get_installed(name.downcase)
+        if info&.dig("metadata", "discovered")
+          exit 1 unless upgrade_recorded(name.downcase, info, opts)
+          return
+        end
+        # Not managed here: hand Homebrew-installed packages back to Homebrew.
+        if system("brew", "list", "--versions", name, out: File::NULL, err: File::NULL)
+          exit 1 unless backends.fetch("brew").upgrade({ "formula" => name }, Package.new({ "name" => name }), opts)
+          return
+        end
+        warn "Error: '#{name}' is not managed by brew app or installed with Homebrew."
+        exit 1
+      end
+
+      name = package.name
+      installed_info = state.get_installed(name)
+      backend_name = resolver.resolve(package, explicit_backend: opts[:backend] || installed_info&.dig("backend"), interactive: false)
+      backend = backends[backend_name]
+      unless backend
+        warn "Error: Backend '#{backend_name}' not available for #{name}."
+        exit 1
+      end
+
+      puts "==> Upgrading #{package.display_name} via #{backend_name.upcase}..."
+      exit 1 unless backend.upgrade(package.backend(backend_name), package, opts)
+    end
+
+    # Upgrade every managed application, continuing past failures so one broken
+    # package never blocks the rest; exits non-zero if any failed.
+    def upgrade_all(opts)
+      puts "==> Upgrading all managed applications..."
+      failed = []
+      state.installed.each do |pkg_name, info|
+        pkg = catalog.find(pkg_name)
+        ok = if pkg.nil? && info.dig("metadata", "discovered")
+          upgrade_recorded(pkg_name, info, opts)
+        elsif pkg.nil?
+          warn "Error: Manifest for managed package '#{pkg_name}' is missing; restore it before upgrading."
+          false
+        elsif (b = backends[info["backend"]]) && pkg.has_backend?(info["backend"])
+          puts "--> Upgrading #{pkg.display_name} (#{info['backend']})..."
+          b.upgrade(pkg.backend(info["backend"]), pkg, opts)
+        else
+          warn "Error: Recorded backend '#{info['backend']}' for #{pkg_name} is unavailable on this platform."
+          false
+        end
+        failed << pkg_name unless ok
+      end
+      return if failed.empty?
+
+      warn "\n✖ Failed to upgrade: #{failed.join(', ')}"
+      exit 1
+    end
+
+    # Upgrade an app installed through discovery from its saved definition.
+    def upgrade_recorded(pkg_name, info, opts)
+      backend = backends[info["backend"]]
+      package_def = info.dig("metadata", "package_definition")
+      unless backend && package_def
+        warn "Error: #{pkg_name} has no usable recorded backend; reinstall it with brew app install."
+        return false
+      end
+      package = Package.new({ "name" => pkg_name, "display_name" => info.dig("metadata", "display_name") || pkg_name })
+      puts "--> Upgrading #{package.display_name} (#{info['backend']})..."
+      backend.upgrade(package_def, package, opts)
     end
 
     def cmd_uninstall(opts)
@@ -311,6 +413,8 @@ module LinuxFormulas
 
         Usage:
           brew app install <package> [options]    Install application with backend choice
+                                                  (names outside the catalog are matched exactly on
+                                                  Homebrew, Flathub, pacman, AUR, then GitHub releases)
           brew app upgrade [package]              Upgrade installed application(s)
           brew app uninstall <package>            Uninstall application
           brew app list                           List installed & available packages
@@ -325,6 +429,8 @@ module LinuxFormulas
           --aur                   Use a configured or detected AUR helper
           --flatpak               Force Flathub Flatpak backend
           --brew, --tarball       Force Homebrew formula / tarball backend
+          --appimage              Use a release AppImage (manifest URL or GitHub release)
+          --archive               Use a release .tar.gz/.tar.xz archive (manifest URL or GitHub release)
           --backend=<name>        Specify backend explicitly
           --dry-run               Preview commands without modifying system
           -y, --yes               Non-interactive mode (use defaults)

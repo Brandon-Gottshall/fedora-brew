@@ -6,13 +6,14 @@ require_relative "platform"
 
 module LinuxFormulas
   class Package
-    attr_reader :name, :display_name, :description, :homepage, :default_backend, :backends
+    attr_reader :name, :display_name, :description, :homepage, :default_backend, :backends, :aliases
 
     def initialize(data, platform: Platform.new)
       @name = data.fetch("name")
       @display_name = data["display_name"] || @name.capitalize
       @description = data["description"] || ""
       @homepage = data["homepage"] || ""
+      @aliases = Array(data["aliases"]).map { |name| name.to_s.downcase }
       section = platform.macos? ? data.fetch("macos", {}) : data.fetch("distros", {}).fetch(platform.family, {})
       shared = platform.macos? ? {} : data.fetch("backends", {})
       @backends = shared.merge(section.fetch("backends", {}))
@@ -51,9 +52,9 @@ module LinuxFormulas
       target = name.to_s.downcase.strip
       file = File.join(@packages_dir, "#{target}.yaml")
       file = File.join(@packages_dir, "#{target}.yml") unless File.exist?(file)
-      return nil unless File.exist?(file)
+      return load_file(file) if File.exist?(file)
 
-      load_file(file)
+      all.find { |package| package.aliases.include?(target) }
     end
 
     private

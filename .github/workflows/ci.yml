@@ -33,6 +33,7 @@ jobs:
           bash test/test_migration.sh
           bash test/test_doctor.sh
           bash test/test_app_manager.sh
+          bash test/test_brew_wrapper.sh
           brew ruby -- test/test_brew_commands.rb
           bash test/test_jump_desktop.sh
           bash test/test_shadow_pc.sh
@@ -74,6 +75,7 @@ jobs:
             brew tap --custom-remote Brandon-Gottshall/linux-formulas "$PWD"
             brew trust --tap Brandon-Gottshall/linux-formulas
             bash test/test_app_manager.sh
+            bash test/test_brew_wrapper.sh
             bash test/test_desktop_bootstrap.sh
             for formula in claude-desktop vicinae flare; do
               brew install --build-from-source "Brandon-Gottshall/linux-formulas/$formula"

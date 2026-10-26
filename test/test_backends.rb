@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 require "stringio"
 require "tmpdir"
+require "digest"
+require "fileutils"
 require_relative "../lib/linux_formulas/app"
 
 class BackendsTest
@@ -211,6 +213,170 @@ class BackendsTest
     original = File.read(app.state.state_file)
     capture_io { app.run(%w[uninstall jump-desktop]) }
     assert_equal original, File.read(app.state.state_file)
+  end
+
+  class FakeGithub < LinuxFormulas::Github
+    attr_accessor :release, :searches
+
+    def initialize(release = nil)
+      super(token: false, arch: "x86_64")
+      @release = release
+      @searches = 0
+    end
+
+    def find_repository(name)
+      @searches += 1
+      { "full_name" => "example/#{name}", "stars" => 42 }
+    end
+
+    def latest_release(_repository)
+      @release
+    end
+  end
+
+  def release_backend(klass, github: FakeGithub.new, files: {})
+    backend = klass.new(github: github, apps_dir: File.join(@temp, "apps"), bin_dir: File.join(@temp, "bin"))
+    backend.define_singleton_method(:fetch) { |url, destination| FileUtils.cp(files.fetch(url), destination); true }
+    backend
+  end
+
+  def sha256(path)
+    Digest::SHA256.file(path).hexdigest
+  end
+
+  def test_catalog_aliases_resolve_to_the_canonical_package
+    assert_equal "claude-code", catalog(platform("ID=cachyos\n")).find("Claude").name
+  end
+
+  def test_select_asset_prefers_native_arch_and_linux_archives
+    github = FakeGithub.new
+    assets = %w[tool-aarch64.AppImage tool-x86_64.AppImage tool-src.tar.gz tool-darwin-x64.tar.gz tool-linux-amd64.tar.gz]
+               .map { |name| { "name" => name } }
+    assert_equal "tool-x86_64.AppImage", github.select_asset(assets, "appimage")["name"]
+    assert_equal "tool-linux-amd64.tar.gz", github.select_asset(assets, "archive")["name"]
+    assert_equal nil, github.select_asset([{ "name" => "tool-arm64.AppImage" }], "appimage")
+  end
+
+  def test_discovery_searches_github_only_when_nothing_else_matches
+    github = FakeGithub.new({ "tag" => "v1", "assets" => [{ "name" => "x-x86_64.AppImage", "url" => "u" }] })
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"), github: github)
+    discovery = app.discovery
+    %w[flatpak pacman aur].each { |b| app.backends.fetch(b).define_singleton_method(:available?) { true } }
+    discovery.define_singleton_method(:probe_flatpak) do |name|
+      [LinuxFormulas::Discovery::Candidate.new(backend: "flatpak", package_def: { "app_id" => "org.x.#{name}" }, label: name, detail: "")]
+    end
+    discovery.define_singleton_method(:probe_pacman) { |_| [] }
+    discovery.define_singleton_method(:probe_aur) { |_| [] }
+    assert_equal ["flatpak"], discovery.find("x").map(&:backend)
+    assert_equal 0, github.searches
+    discovery.define_singleton_method(:probe_flatpak) { |_| [] }
+    assert_equal ["appimage"], discovery.find("x").map(&:backend)
+    assert_equal 1, github.searches
+  end
+
+  def test_discovered_install_needs_confirmation_and_upgrades_from_saved_definition
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
+    candidate = LinuxFormulas::Discovery::Candidate.new(
+      backend: "flatpak", package_def: { "app_id" => "org.example.Tool", "remote" => "flathub" }, label: "Tool", detail: "",
+    )
+    app.discovery.define_singleton_method(:find) { |*| [candidate] }
+    flatpak = app.backends.fetch("flatpak")
+    calls = []
+    flatpak.define_singleton_method(:installed?) { |*| false }
+    flatpak.define_singleton_method(:install) { |definition, *| calls << [:install, definition["app_id"]]; true }
+    flatpak.define_singleton_method(:upgrade) { |definition, *| calls << [:upgrade, definition["app_id"]]; true }
+
+    original_stdin = $stdin
+    $stdin = StringIO.new
+    begin
+      capture_io { assert_raises(SystemExit) { app.run(%w[install tool]) } }
+    ensure
+      $stdin = original_stdin
+    end
+    assert_empty calls
+
+    capture_io { app.run(%w[install tool -y]) }
+    assert app.state.get_installed("tool").dig("metadata", "discovered")
+    capture_io { app.run(%w[upgrade]) }
+    capture_io { app.run(%w[upgrade tool]) }
+    assert_equal [[:install, "org.example.Tool"], [:upgrade, "org.example.Tool"], [:upgrade, "org.example.Tool"]], calls
+  end
+
+  def test_upgrade_all_continues_past_failures
+    app = LinuxFormulas::App.new(config_dir: @temp, platform: platform("ID=cachyos\n"))
+    app.state.record_install("moonlight", "flatpak")
+    app.state.record_install("sober", "flatpak")
+    upgraded = []
+    app.backends.fetch("flatpak").define_singleton_method(:upgrade) do |definition, *|
+      upgraded << definition["app_id"]
+      definition["app_id"] != "com.moonlight_stream.Moonlight"
+    end
+    _, err = capture_io { assert_raises(SystemExit) { app.run(%w[upgrade]) } }
+    assert_equal %w[com.moonlight_stream.Moonlight org.vinegarhq.Sober], upgraded
+    assert_includes err, "Failed to upgrade: moonlight"
+  end
+
+  def test_appimage_install_upgrade_and_uninstall
+    image = File.join(@temp, "tool.AppImage")
+    File.write(image, "#!/bin/sh\necho tool\n")
+    backend = release_backend(LinuxFormulas::Backends::AppImage, files: { "https://e.x/tool.AppImage" => image })
+    pkg = LinuxFormulas::Package.new({ "name" => "tool" })
+    definition = { "url" => "https://e.x/tool.AppImage", "sha256" => sha256(image), "version" => "1.0" }
+
+    capture_io { assert backend.install(definition, pkg) }
+    link = File.join(@temp, "bin", "tool")
+    assert File.symlink?(link)
+    assert File.executable?(File.readlink(link))
+    assert backend.installed?(definition, pkg)
+    out, = capture_io { assert backend.upgrade(definition, pkg) }
+    assert_includes out, "already up to date"
+    capture_io { assert backend.uninstall(definition, pkg) }
+    refute File.symlink?(link)
+    refute backend.installed?(definition, pkg)
+  end
+
+  def test_release_rejects_checksum_mismatch_and_foreign_links
+    image = File.join(@temp, "tool.AppImage")
+    File.write(image, "payload")
+    backend = release_backend(LinuxFormulas::Backends::AppImage, files: { "https://e.x/tool.AppImage" => image })
+    pkg = LinuxFormulas::Package.new({ "name" => "tool" })
+    capture_io { refute backend.install({ "url" => "https://e.x/tool.AppImage", "sha256" => "0" * 64 }, pkg) }
+    refute backend.installed?({}, pkg)
+
+    FileUtils.mkdir_p(File.join(@temp, "bin"))
+    File.write(File.join(@temp, "bin", "tool"), "user's own script")
+    capture_io { refute backend.install({ "url" => "https://e.x/tool.AppImage", "sha256" => sha256(image) }, pkg) }
+    assert_equal "user's own script", File.read(File.join(@temp, "bin", "tool"))
+  end
+
+  def test_archive_installs_github_release_and_upgrades_to_new_tag
+    archives = %w[1.0 2.0].to_h do |version|
+      root = File.join(@temp, "src-#{version}", "tool-#{version}")
+      FileUtils.mkdir_p([File.join(root, "bin"), File.join(root, "lib")])
+      File.write(File.join(root, "bin", "tool"), "#!/bin/sh\necho #{version}\n")
+      File.chmod(0o755, File.join(root, "bin", "tool"))
+      File.write(File.join(root, "lib", "libtool.so"), "")
+      File.chmod(0o755, File.join(root, "lib", "libtool.so"))
+      archive = File.join(@temp, "tool-#{version}-linux-x86_64.tar.gz")
+      system("tar", "-czf", archive, "-C", File.dirname(root), File.basename(root), exception: true)
+      [version, archive]
+    end
+    release = ->(version) do
+      { "tag" => "v#{version}", "assets" => [{ "name" => File.basename(archives[version]), "url" => "https://e.x/#{version}",
+                                               "sha256" => sha256(archives[version]) }] }
+    end
+    github = FakeGithub.new(release.call("1.0"))
+    backend = release_backend(LinuxFormulas::Backends::Archive, github: github,
+                                                                files: { "https://e.x/1.0" => archives["1.0"], "https://e.x/2.0" => archives["2.0"] })
+    pkg = LinuxFormulas::Package.new({ "name" => "tool" })
+
+    capture_io { assert backend.install({ "github" => "example/tool" }, pkg) }
+    link = File.join(@temp, "bin", "tool")
+    assert_includes File.read(link), "echo 1.0"
+    github.release = release.call("2.0")
+    capture_io { assert backend.upgrade({ "github" => "example/tool" }, pkg) }
+    assert_includes File.read(link), "echo 2.0"
+    assert_includes backend.info({}, pkg), '"version": "v2.0"'
   end
 end
 

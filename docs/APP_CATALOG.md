@@ -99,13 +99,54 @@ brew app install antigravity --flatpak
 brew app install antigravity --brew
 brew app install antigravity --tarball
 
+# Release AppImage / archive (manifest URL or latest GitHub release)
+brew app install moonlight-qt --appimage
+brew app install ripgrep --archive
+
 # Preview commands without executing
 brew app install antigravity --flatpak --dry-run
 ```
 
 ---
 
-## 4. Package Manifest Format (`packages/*.yaml`)
+## 4. Installing Names Outside the Catalog
+
+`brew app install <name>` resolves a name in this order:
+
+1. **Catalog**: a manifest named `<name>`, or one listing it under `aliases` (`claude` → `claude-code`). The manifest's own backend choice applies.
+2. **Homebrew**: a formula, or a cask that installs on Linux, named exactly `<name>`. It installs normally and Homebrew keeps it updated.
+3. **Discovery**: exact matches on Flathub, the pacman repositories and the AUR, in that order. A GitHub release AppImage, then a release archive (`.tar.gz`, `.tar.xz`, …), is offered only when nothing earlier matched. Matches are listed with their source details and installed only after you confirm (`-y` accepts the first).
+
+Discovered installs are recorded with the definition they were installed from, so `brew app upgrade` keeps them current like catalog apps. AppImages and archives install under `~/.local/share/linux-formulas/apps/<name>` with the executable linked into `~/.local/bin`. They are checked against GitHub's published SHA-256 digest when the release provides one. Upgrades move to the newest release, and existing files in `~/.local/bin` that the tap didn't create are never overwritten.
+
+Manifests can use the release backends too, either pinned or tracking a repository:
+
+```yaml
+backends:
+  appimage:
+    url: https://example.com/Tool-1.2.AppImage
+    sha256: <sha256>
+  archive:
+    github: owner/tool
+    asset: linux-x86_64\.tar\.gz$   # optional regex narrowing the release asset
+    binary: tool                      # optional executable name inside the archive
+```
+
+### One `brew` for everything
+
+`scripts/shell/brew.bash` wraps the `brew` command in your shell. Source it from your profile:
+
+```bash
+. "$(brew --repository brandon-gottshall/fedora-brew)/scripts/shell/brew.bash"
+```
+
+- `brew install <name>` runs `brew app install <name>`. Tap-qualified names and Homebrew-only options (`--cask`, `--HEAD`, …) go to Homebrew unchanged.
+- `brew upgrade` upgrades Homebrew, then every Flatpak app and runtime, then everything `brew app` manages: pacman, AUR, AppImage and archive installs. A failure in one package doesn't stop the rest.
+- `brew upgrade <name>` runs `brew app upgrade <name>`, which hands Homebrew-installed packages back to Homebrew.
+
+---
+
+## 5. Package Manifest Format (`packages/*.yaml`)
 
 Every application in the catalog is defined by a simple, declarative YAML manifest in `packages/`:
 
@@ -155,7 +196,7 @@ as Toshy stay in shared Linux backends.
 
 ---
 
-## 5. State Tracking & Preferences
+## 6. State Tracking & Preferences
 
 `brew app` tracks application state in `~/.config/linux-formulas/`:
 
@@ -176,7 +217,7 @@ brew app config
 
 ---
 
-## 6. Command Reference
+## 7. Command Reference
 
 | Command | Description |
 | :--- | :--- |

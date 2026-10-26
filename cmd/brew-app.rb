@@ -13,7 +13,7 @@ module Homebrew
         switch "--dry-run", description: "Preview commands without installing or changing package state."
         switch "-y", "--yes", description: "Run without interactive backend selection."
         switch "--non-interactive", description: "Run without interactive backend selection."
-        %w[native pacman aur cask rpm dnf flatpak flathub brew tarball standalone].each do |backend|
+        %w[native pacman aur cask rpm dnf flatpak flathub brew tarball standalone appimage archive].each do |backend|
           switch "--#{backend}", description: "Select the #{backend} installation method."
         end
         flag "--backend=", description: "Select an installation backend by name."

@@ -1,0 +1,25 @@
+name: claude-code
+display_name: Claude Code
+description: Anthropic's agentic coding tool for the terminal (the claude CLI)
+homepage: https://claude.com/product/claude-code
+aliases:
+- claude
+default: brew
+backends:
+  brew:
+    summary: Official Homebrew cask maintained in Homebrew/homebrew-cask
+    pros:
+    - Updates through ordinary Homebrew commands
+    - Same install method on Linux and macOS
+    cask: claude-code
+distros:
+  arch:
+    default: pacman
+    backends:
+      pacman:
+        summary: Native package from the CachyOS repositories
+        pros:
+        - Updates with the rest of the system through pacman
+        cons:
+        - Only in the CachyOS repositories, not plain Arch
+        package: claude-code
