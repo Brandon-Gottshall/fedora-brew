@@ -5,32 +5,17 @@ class ClaudeDesktop < Formula
   version "2.7032.0"
   sha256 "1e7f4504bca5b2f6b2d3c4123d145d727647e77f2ee2d046850711e61e7d7b11"
   license :cannot_represent
-  revision 1
+  revision 2
 
   livecheck do
     skip "release metadata is read from Anthropic's APT index by update-claude-desktop.py"
   end
 
-  depends_on "patchelf" => :build
-  depends_on "alsa-lib"
+  # Like the upstream Debian package, the app uses the desktop's own GTK, NSS,
+  # ALSA and Mesa libraries (and so the distro's GPU drivers) rather than
+  # Homebrew copies. `scripts/doctor` reports any that a minimal system lacks.
   depends_on arch: :x86_64
-  depends_on "at-spi2-core"
-  depends_on "cairo"
-  depends_on "cups"
-  depends_on "gtk+3"
-  depends_on "libx11"
-  depends_on "libxcb"
-  depends_on "libxcomposite"
-  depends_on "libxdamage"
-  depends_on "libxext"
-  depends_on "libxfixes"
-  depends_on "libxkbcommon"
-  depends_on "libxrandr"
   depends_on :linux
-  depends_on "mesa"
-  depends_on "nspr"
-  depends_on "nss"
-  depends_on "pango"
 
   def install
     system "ar", "x", cached_download
@@ -43,12 +28,6 @@ class ClaudeDesktop < Formula
     odie "Claude Desktop application bundle is missing" unless (payload/"resources/app.asar").exist?
 
     libexec.install payload.children
-    # Upstream Debian binaries do not search Homebrew's dependency prefixes.
-    runtime_libraries = %w[
-      alsa-lib at-spi2-core cairo cups gtk+3 libx11 libxcb libxcomposite
-      libxdamage libxext libxfixes libxkbcommon libxrandr mesa nspr nss pango
-    ].map { |dependency| formula_opt_lib(dependency) }
-    system "patchelf", "--add-rpath", runtime_libraries.join(":"), libexec/"claude-desktop"
     (bin/"claude-desktop").write <<~SH
       #!/bin/bash
       exec "#{opt_libexec}/claude-desktop" "$@"
@@ -72,6 +51,11 @@ class ClaudeDesktop < Formula
       The Debian maintainer scripts are intentionally not run, so APT is not registered
       and Homebrew remains the sole update owner. Upgrade with:
         brew upgrade claude-desktop
+
+      Claude Desktop uses the system's GTK 3, NSS, ALSA and Mesa libraries, which
+      every desktop install provides. On a minimal system, run the tap doctor to
+      list any that are missing:
+        #{tap.path}/scripts/doctor
 
       Desktop discovery uses Homebrew's share directory. Run the tap bootstrap once:
         #{tap.path}/scripts/bootstrap-desktop

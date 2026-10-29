@@ -123,6 +123,21 @@ else
   info "No applications directory at $desktop_dir"
 fi
 
+# 5. Check that repackaged binaries find their system libraries
+info "Checking system libraries for repackaged applications..."
+for binary in "$brew_prefix/opt/claude-desktop/libexec/claude-desktop"; do
+  [[ -x "$binary" ]] || continue
+  app_name="$(basename "$binary")"
+  missing="$(ldd "$binary" 2>/dev/null | awk '/not found/ {print $1}' | sort -u | tr '\n' ' ')"
+  if [[ -z "$missing" ]]; then
+    pass "$app_name finds all of its system libraries"
+  else
+    fail "$app_name is missing system libraries: $missing"
+    info "  Install your distro's GTK 3, NSS, ALSA and Mesa packages (e.g. gtk3 nss alsa-lib mesa on Arch)"
+    errors=$((errors + 1))
+  fi
+done
+
 printf "\n========================================\n"
 if [[ $errors -eq 0 && $warnings -eq 0 ]]; then
   printf "${GREEN}All checks passed! Linux Formulas tap is in optimal health.${NC}\n"
