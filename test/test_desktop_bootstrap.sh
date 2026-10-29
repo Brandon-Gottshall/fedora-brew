@@ -57,3 +57,19 @@ test ! -e "$legacy_plasma"
 printf '# user-owned config\n' > "$legacy_environment"
 "$repo_root/scripts/bootstrap-desktop"
 test -f "$legacy_environment"
+
+# A tap on a non-default branch stays there across `brew update`: bootstrap
+# points origin/HEAD at the checked-out branch, and --remove restores it.
+origin="$fixture/origin.git"
+tap="$fixture/tap"
+git init -q --bare -b main "$origin"
+git clone -q "$origin" "$tap" 2>/dev/null
+git -C "$tap" -c user.name=test -c user.email=test@example.com commit -q --allow-empty -m root
+git -C "$tap" push -q origin main
+git -C "$tap" checkout -q -b distro
+git -C "$tap" push -q -u origin distro
+git -C "$tap" remote set-head origin main
+LINUX_FORMULAS_TAP_DIR="$tap" "$repo_root/scripts/bootstrap-desktop" | grep -Fq 'keeps this tap on branch: distro'
+test "$(git -C "$tap" symbolic-ref refs/remotes/origin/HEAD)" = refs/remotes/origin/distro
+LINUX_FORMULAS_TAP_DIR="$tap" "$repo_root/scripts/bootstrap-desktop" --remove >/dev/null
+test "$(git -C "$tap" symbolic-ref refs/remotes/origin/HEAD)" = refs/remotes/origin/main

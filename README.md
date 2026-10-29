@@ -101,14 +101,17 @@ brew tap Brandon-Gottshall/linux-formulas https://github.com/Brandon-Gottshall/f
 # 2. Trust tap commands
 brew trust --tap Brandon-Gottshall/linux-formulas
 
-# 3. Run desktop bootstrap once
+# 3. Arch / CachyOS only: switch the tap to the Arch branch
+git -C "$(brew --repository Brandon-Gottshall/linux-formulas)" checkout linux-formulas/arch-support-16187652311313090728
+
+# 4. Run desktop bootstrap once
 "$(brew --prefix)/Homebrew/Library/Taps/brandon-gottshall/homebrew-linux-formulas/scripts/bootstrap-desktop"
 
-# 4. Verify system health
+# 5. Verify system health
 "$(brew --prefix)/Homebrew/Library/Taps/brandon-gottshall/homebrew-linux-formulas/scripts/doctor"
 ```
 
-The bootstrap script adds Homebrew's `share` directory to `XDG_DATA_DIRS`, refreshes desktop caches, and configures a Plasma pre-startup hook in `~/.config/plasma-workspace/env/`.
+The bootstrap script adds Homebrew's `share` directory to `XDG_DATA_DIRS`, refreshes desktop caches, and configures a Plasma pre-startup hook in `~/.config/plasma-workspace/env/`. It also pins `brew update` to the branch the tap is checked out on. Without that, `brew update` switches taps back to their default branch (`main`), which would silently undo step 3. Run the bootstrap again after re-tapping or switching branches; `scripts/doctor` warns when the pin is missing.
 
 ---
 

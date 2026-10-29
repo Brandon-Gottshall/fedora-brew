@@ -123,7 +123,22 @@ else
   info "No applications directory at $desktop_dir"
 fi
 
-# 5. Check that repackaged binaries find their system libraries
+# 5. Check that brew update keeps this tap on its current branch
+info "Checking which branch brew update follows for this tap..."
+tap_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+tap_branch="$(git -C "$tap_dir" symbolic-ref --short -q HEAD 2>/dev/null || true)"
+tap_upstream="$(git -C "$tap_dir" symbolic-ref --short -q refs/remotes/origin/HEAD 2>/dev/null || true)"
+if [[ -z "$tap_branch" ]]; then
+  warn "Tap is not on a branch; brew update will check out ${tap_upstream#origin/}"
+  warnings=$((warnings + 1))
+elif [[ "$tap_upstream" == "origin/$tap_branch" ]]; then
+  pass "brew update keeps this tap on branch $tap_branch"
+else
+  warn "brew update will switch this tap from $tap_branch to ${tap_upstream#origin/} (run: scripts/bootstrap-desktop)"
+  warnings=$((warnings + 1))
+fi
+
+# 6. Check that repackaged binaries find their system libraries
 info "Checking system libraries for repackaged applications..."
 for binary in "$brew_prefix/opt/claude-desktop/libexec/claude-desktop"; do
   [[ -x "$binary" ]] || continue

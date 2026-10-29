@@ -8,8 +8,9 @@ Usage: scripts/bootstrap-desktop [--remove]
 
 Adds Homebrew's share directory to XDG_DATA_DIRS before desktop launchers start.
 On Plasma, a documented pre-startup hook is installed in addition to the
-generic environment.d fallback. The default action is idempotent.
---remove reverses only files managed by this bootstrap.
+generic environment.d fallback. It also pins `brew update` to the branch this
+tap is checked out on (see below). The default action is idempotent.
+--remove reverses only files managed by this bootstrap and unpins the branch.
 EOF
 }
 
@@ -116,6 +117,34 @@ if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] && command -v kbuildsycoca6 >/dev/n
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
 elif [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] && command -v kbuildsycoca5 >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
+fi
+
+# `brew update` checks taps out on their remote's default branch (main),
+# taken from refs/remotes/origin/HEAD. Pointing that ref at the branch the tap
+# is on keeps a distro branch such as the CachyOS one checked out and updated.
+pin_tap_branch() {
+  local tap_dir="${LINUX_FORMULAS_TAP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+  git -C "$tap_dir" rev-parse --git-dir >/dev/null 2>&1 || return 0
+  local branch
+  branch="$(git -C "$tap_dir" symbolic-ref --short -q HEAD || true)"
+  if [[ "$action" == remove ]]; then
+    git -C "$tap_dir" remote set-head origin --auto >/dev/null 2>&1 &&
+      printf 'brew update follows the remote default branch again: %s\n' \
+        "$(git -C "$tap_dir" symbolic-ref --short -q refs/remotes/origin/HEAD | sed 's|^origin/||')"
+    return 0
+  fi
+  if [[ -z "$branch" ]] || ! git -C "$tap_dir" rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null; then
+    printf 'Not pinning brew update: the tap is not on a branch that exists on origin.\n' >&2
+    return 0
+  fi
+  if [[ "$(git -C "$tap_dir" symbolic-ref -q refs/remotes/origin/HEAD || true)" != "refs/remotes/origin/$branch" ]]; then
+    git -C "$tap_dir" remote set-head origin "$branch"
+  fi
+  printf 'brew update keeps this tap on branch: %s\n' "$branch"
+}
+
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 || -n "${LINUX_FORMULAS_TAP_DIR:-}" ]]; then
+  pin_tap_branch
 fi
 
 if [[ "$action" == install ]]; then
