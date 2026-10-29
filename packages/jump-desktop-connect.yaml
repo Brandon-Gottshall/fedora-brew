@@ -1,0 +1,28 @@
+name: jump-desktop-connect
+display_name: Jump Desktop Connect
+description: Remote desktop access host application by Phase Five Systems
+homepage: https://jumpdesktop.com/connect/
+backends: {}
+distros:
+  fedora:
+    default: rpm
+    backends:
+      rpm:
+        summary: Native Linux RDP/VNC Server (Alternative for Fedora)
+        pros:
+        - Enables remote connections from Jump Desktop client apps via standard RDP/VNC
+        - Managed natively via system DNF
+        cons:
+        - Requires manual host setup; Jump Desktop Connect automatic pairing is not supported on Linux
+        package: xrdp
+macos:
+  default: brew
+  backends:
+    brew:
+      summary: Official macOS Cask (macOS only)
+      pros:
+      - Native macOS remote desktop host with Fluid protocol support
+      - Automatic guided installer and system service registration
+      cons:
+      - Supported on macOS only; no native Linux Connect agent exists
+      cask: Brandon-Gottshall/linux-formulas/jump-desktop-connect

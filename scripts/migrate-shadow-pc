@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+known_shas=(
+  "5dc931780f2b58fe12b5b4f8d59adb13b838ced352ddb6cc361edbba102aab11"
+  "e8ce7c0137b916c5dddc827bdc7c1149e4e76d3340f7307150eeec6c597ff9f8"
+)
+if [[ -n "${SHADOW_PC_EXPECTED_SHA256:-}" ]]; then
+  known_shas=("$SHADOW_PC_EXPECTED_SHA256")
+fi
+formula="${SHADOW_PC_FORMULA:-Brandon-Gottshall/linux-formulas/shadow-pc}"
+brew_bin="${BREW_BIN:-brew}"
+source_path="${HOME}/Downloads/ShadowPC.appimage"
+dry_run=false
+
+usage() {
+  printf 'Usage: %s [--dry-run] [--source PATH]\n' "$0"
+}
+
+while (($#)); do
+  case "$1" in
+    --dry-run) dry_run=true ;;
+    --source)
+      shift
+      [[ $# -gt 0 ]] || { usage >&2; exit 2; }
+      source_path="$1"
+      ;;
+    -h|--help) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+[[ -f "$source_path" ]] || { printf 'Shadow AppImage not found: %s\n' "$source_path" >&2; exit 1; }
+
+actual_sha=$(sha256sum "$source_path" | awk '{print $1}')
+known=false
+for expected_sha in "${known_shas[@]}"; do
+  if [[ "$actual_sha" == "$expected_sha" ]]; then
+    known=true
+    break
+  fi
+done
+if ! $known; then
+  printf 'Refusing migration: unrecognized Shadow AppImage checksum.\n' >&2
+  printf 'Actual: %s\n' "$actual_sha" >&2
+  exit 1
+fi
+
+state_root="${XDG_STATE_HOME:-${HOME}/.local/state}/linux-formulas"
+timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+backup_dir="$state_root/backups/shadow-pc/$timestamp"
+backup_path="$backup_dir/$(basename "$source_path")"
+
+printf 'Verified Shadow AppImage: %s\n' "$source_path"
+printf 'Homebrew formula: %s\n' "$formula"
+printf 'Rollback path: %s\n' "$backup_path"
+
+if $dry_run; then
+  printf 'Dry run complete; no files or packages were changed.\n'
+  exit 0
+fi
+
+if ! "$brew_bin" list "$formula" >/dev/null 2>&1; then
+  "$brew_bin" install "$formula"
+fi
+"$brew_bin" test "$formula"
+command -v shadow-pc >/dev/null 2>&1 || {
+  printf 'Homebrew installed Shadow PC but its launcher is not on PATH.\n' >&2
+  exit 1
+}
+
+mkdir -p "$backup_dir"
+mv "$source_path" "$backup_path"
+chmod -x "$backup_path"
+printf 'Migration complete. Original AppImage preserved at: %s\n' "$backup_path"

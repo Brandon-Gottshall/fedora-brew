@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# scripts/brew-app: Standalone runner for Linux Formulas App Manager
+
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+runner_script="$script_dir/../lib/linux_formulas/runner.rb"
+
+if command -v ruby >/dev/null 2>&1; then
+  exec ruby "$runner_script" "$@"
+elif command -v brew >/dev/null 2>&1; then
+  exec brew ruby -- "$runner_script" "$@"
+else
+  printf 'error: neither ruby nor brew is available on PATH\n' >&2
+  exit 1
+fi

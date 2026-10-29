@@ -1,0 +1,15 @@
+name: moonlight
+display_name: Moonlight
+description: Stream games and other applications from another PC running Sunshine or GeForce Experience
+homepage: https://moonlight-stream.org
+default: flatpak
+backends:
+  flatpak:
+    summary: Official Flathub Flatpak package (verified publisher)
+    pros:
+    - Published on Flathub by the upstream developer
+    - Same sandboxed runtime on every Linux distribution
+    cons:
+    - Requires Flatpak runtime
+    remote: flathub
+    app_id: com.moonlight_stream.Moonlight

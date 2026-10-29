@@ -8,8 +8,9 @@ Usage: scripts/bootstrap-desktop [--remove]
 
 Adds Homebrew's share directory to XDG_DATA_DIRS before desktop launchers start.
 On Plasma, a documented pre-startup hook is installed in addition to the
-generic environment.d fallback. The default action is idempotent.
---remove reverses only files managed by this bootstrap.
+generic environment.d fallback. It also pins `brew update` to the branch this
+tap is checked out on (see below). The default action is idempotent.
+--remove reverses only files managed by this bootstrap and unpins the branch.
 EOF
 }
 
@@ -35,12 +36,12 @@ fi
 brew_share="$(brew --prefix)/share"
 xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 environment_dir="$xdg_config_home/environment.d"
-environment_file="$environment_dir/60-fedora-brew-xdg-data.conf"
+environment_file="$environment_dir/60-linux-formulas-xdg-data.conf"
 plasma_dir="$xdg_config_home/plasma-workspace/env"
-plasma_file="$plasma_dir/60-fedora-brew-xdg-data.sh"
+plasma_file="$plasma_dir/60-linux-formulas-xdg-data.sh"
 default_dirs="/usr/local/share:/usr/share"
 current_dirs="${XDG_DATA_DIRS:-$default_dirs}"
-managed_marker="# Managed by fedora-brew bootstrap."
+managed_marker="# Managed by linux-formulas bootstrap."
 
 remove_path() {
   local input="$1" output="" item
@@ -54,6 +55,15 @@ remove_path() {
 
 base_dirs="$(remove_path "$current_dirs")"
 
+# Retire only hooks written by the previous tap identity. Unmarked/user-edited
+# files at these paths are not ours to delete.
+for legacy_file in "$environment_dir/60-fedora-brew-xdg-data.conf" "$plasma_dir/60-fedora-brew-xdg-data.sh"; do
+  if [[ -f "$legacy_file" ]] && grep -Fqx '# Managed by fedora-brew bootstrap.' "$legacy_file"; then
+    rm -f "$legacy_file"
+  fi
+done
+
+
 if [[ "$action" == remove ]]; then
   for managed_file in "$environment_file" "$plasma_file"; do
     if [[ -f "$managed_file" ]] && grep -Fqx "$managed_marker" "$managed_file"; then
@@ -61,7 +71,7 @@ if [[ "$action" == remove ]]; then
     fi
   done
   new_dirs="$base_dirs"
-  printf 'Removed Fedora Brew desktop session integration.\n'
+  printf 'Removed Linux Formulas desktop session integration.\n'
 else
   mkdir -p "$environment_dir" "$plasma_dir"
   new_dirs="$brew_share:$base_dirs"
@@ -74,13 +84,13 @@ else
   } > "$environment_tmp"
   {
     printf '%s\n' "$managed_marker"
-    printf "_fedora_brew_share='%s'\n" "$brew_share"
+    printf "_linux_formulas_share='%s'\n" "$brew_share"
     cat <<'EOF'
 case ":${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:" in
-  *":${_fedora_brew_share}:"*) ;;
-  *) export XDG_DATA_DIRS="${_fedora_brew_share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
+  *":${_linux_formulas_share}:"*) ;;
+  *) export XDG_DATA_DIRS="${_linux_formulas_share}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}" ;;
 esac
-unset _fedora_brew_share
+unset _linux_formulas_share
 EOF
   } > "$plasma_tmp"
   chmod 0644 "$environment_tmp" "$plasma_tmp"
@@ -91,22 +101,50 @@ EOF
   printf 'Configured Plasma pre-startup environment: %s\n' "$plasma_file"
 fi
 
-if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v systemctl >/dev/null 2>&1; then
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] && command -v systemctl >/dev/null 2>&1; then
   systemctl --user set-environment "XDG_DATA_DIRS=$new_dirs" 2>/dev/null || true
 fi
-if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] &&
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] &&
    command -v dbus-update-activation-environment >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" dbus-update-activation-environment --systemd XDG_DATA_DIRS 2>/dev/null || true
 fi
-if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] &&
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] &&
    command -v update-desktop-database >/dev/null 2>&1 &&
    [[ -d "$brew_share/applications" ]]; then
   XDG_DATA_DIRS="$new_dirs" update-desktop-database "$brew_share/applications" 2>/dev/null || true
 fi
-if [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v kbuildsycoca6 >/dev/null 2>&1; then
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] && command -v kbuildsycoca6 >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
-elif [[ "${FEDORA_BREW_TESTING:-0}" != 1 ]] && command -v kbuildsycoca5 >/dev/null 2>&1; then
+elif [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 ]] && command -v kbuildsycoca5 >/dev/null 2>&1; then
   XDG_DATA_DIRS="$new_dirs" kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
+fi
+
+# `brew update` checks taps out on their remote's default branch (main),
+# taken from refs/remotes/origin/HEAD. Pointing that ref at the branch the tap
+# is on keeps a distro branch such as the CachyOS one checked out and updated.
+pin_tap_branch() {
+  local tap_dir="${LINUX_FORMULAS_TAP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+  git -C "$tap_dir" rev-parse --git-dir >/dev/null 2>&1 || return 0
+  local branch
+  branch="$(git -C "$tap_dir" symbolic-ref --short -q HEAD || true)"
+  if [[ "$action" == remove ]]; then
+    git -C "$tap_dir" remote set-head origin --auto >/dev/null 2>&1 &&
+      printf 'brew update follows the remote default branch again: %s\n' \
+        "$(git -C "$tap_dir" symbolic-ref --short -q refs/remotes/origin/HEAD | sed 's|^origin/||')"
+    return 0
+  fi
+  if [[ -z "$branch" ]] || ! git -C "$tap_dir" rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null; then
+    printf 'Not pinning brew update: the tap is not on a branch that exists on origin.\n' >&2
+    return 0
+  fi
+  if [[ "$(git -C "$tap_dir" symbolic-ref -q refs/remotes/origin/HEAD || true)" != "refs/remotes/origin/$branch" ]]; then
+    git -C "$tap_dir" remote set-head origin "$branch"
+  fi
+  printf 'brew update keeps this tap on branch: %s\n' "$branch"
+}
+
+if [[ "${LINUX_FORMULAS_TESTING:-0}" != 1 || -n "${LINUX_FORMULAS_TAP_DIR:-}" ]]; then
+  pin_tap_branch
 fi
 
 if [[ "$action" == install ]]; then

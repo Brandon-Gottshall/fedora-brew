@@ -1,0 +1,16 @@
+name: claude-desktop
+display_name: Claude Desktop
+description: Official Claude desktop application for chat, Claude Code, and Cowork
+homepage: https://claude.com/download
+default: brew
+backends:
+  brew:
+    summary: Homebrew-managed extraction of Anthropic's official Linux beta
+    pros:
+    - Uses the checksummed first-party Anthropic payload
+    - Updates through ordinary Homebrew commands
+    - Installs without APT or root privileges
+    cons:
+    - Fedora is not an officially supported distribution
+    - Linux x86_64 only in this tap
+    formula: Brandon-Gottshall/linux-formulas/claude-desktop

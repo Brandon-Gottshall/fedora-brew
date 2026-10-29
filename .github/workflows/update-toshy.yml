@@ -1,0 +1,43 @@
+name: Update Toshy
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 9 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@main
+      - name: Discover and pin release
+        run: python3 scripts/update-toshy.py
+      - name: Validate synchronized package definitions
+        run: |
+          python3 scripts/update-toshy.py --check
+          python3 -m unittest discover -s test -p 'test_*.py'
+          brew ruby -- -c Formula/toshy-runtime.rb
+          brew ruby -- -c Casks/toshy.rb
+          brew tap --custom-remote Brandon-Gottshall/linux-formulas "$GITHUB_WORKSPACE"
+          brew trust --tap Brandon-Gottshall/linux-formulas
+          brew audit --strict Brandon-Gottshall/linux-formulas/toshy-runtime
+          brew audit --cask --strict Brandon-Gottshall/linux-formulas/toshy
+          brew install --build-from-source Brandon-Gottshall/linux-formulas/toshy-runtime
+          brew test Brandon-Gottshall/linux-formulas/toshy-runtime
+      - name: Open update pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/update-toshy
+          delete-branch: true
+          commit-message: "toshy: update stable release"
+          title: "toshy: update stable release"
+          body: |
+            Automated update from Toshy's latest stable GitHub release.
+
+            The runtime formula and Linux cask are updated as one checksummed
+            release unit and validated before this PR is opened.
